@@ -49,11 +49,15 @@ public class Todo {
 
     @ManyToMany
     @JoinTable(
-            name = "todo_tags",
-            joinColumns = @JoinColumn(name = "todo_id"),
-            inverseJoinColumns = @JoinColumn(name = "tag_id")
+        name = "todo_tags",
+        joinColumns = @JoinColumn(name = "todo_id"),
+        inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
     private Set<Tags> tags = new HashSet<>();
+
+    @ManyToOne
+    @JoinColumn(name = "board_id", nullable = true) // will flip to false once V4 backfills existing rows
+    private Board board;
 
     @PrePersist
     protected void onCreate() {
