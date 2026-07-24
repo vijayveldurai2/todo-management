@@ -8,13 +8,14 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.UUID;
 
 @Setter
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
 public class TodoDto {
-    private Long id;
+    private UUID id;
     private String title;
     private String description;
     private Boolean completed;
@@ -24,5 +25,5 @@ public class TodoDto {
     private LocalDateTime dueDate;
     private LocalDateTime completedDate;
     private Set<String> tagNames;
-    private Long boardId;
+    private UUID boardId;
 }

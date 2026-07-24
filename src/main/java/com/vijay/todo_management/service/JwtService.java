@@ -30,7 +30,7 @@ public class JwtService {
     public String generateToken(User user) {
         Instant now = Instant.now();
         return Jwts.builder()
-                .subject(String.valueOf(user.getId()))
+                .subject(user.getId().toString())
                 .claim("email", user.getEmail())
                 .claim("username", user.getUsername())
                 .claim("role", user.getRole().name())

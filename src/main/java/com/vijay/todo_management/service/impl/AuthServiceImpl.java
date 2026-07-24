@@ -170,7 +170,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Keep the token as an audit row: mark used, link to user, unlink from pending
         // so deleting pending does NOT cascade-delete this token.
-        Long pendingId = pending.getId();
+        UUID pendingId = pending.getId();
         token.setUsedAt(now);
         token.setUser(user);
         token.setPendingSignup(null);

@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/boards")
@@ -27,17 +28,17 @@ public class BoardController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BoardDto> getBoardById(@PathVariable Long id) {
+    public ResponseEntity<BoardDto> getBoardById(@PathVariable UUID id) {
         return ResponseEntity.ok(boardService.getBoardById(id));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<BoardDto> updateBoard(@PathVariable Long id, @RequestBody BoardDto boardDto) {
+    public ResponseEntity<BoardDto> updateBoard(@PathVariable UUID id, @RequestBody BoardDto boardDto) {
         return ResponseEntity.ok(boardService.updateBoard(id, boardDto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteBoard(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteBoard(@PathVariable UUID id) {
         boardService.deleteBoard(id);
         return ResponseEntity.noContent().build();
     }

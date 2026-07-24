@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -54,7 +55,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserDto getUserById(Long id) {
+    public UserDto getUserById(UUID id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         return mapToDto(user);
@@ -69,7 +70,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserDto updateUser(Long id, UserDto userDto) {
+    public UserDto updateUser(UUID id, UserDto userDto) {
         User existing = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         existing.setUsername(userDto.getUsername());
@@ -79,7 +80,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void deleteUser(Long id) {
+    public void deleteUser(UUID id) {
         userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         userRepository.deleteById(id);

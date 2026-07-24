@@ -5,14 +5,16 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserDto {
-    private Long id;
+    private UUID id;
     private String username;
     private String email;
-    private String password; // write-only in practice; we'll exclude from responses once auth is added
+    private String password; // write-only in practice
     private String name;
 }

@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -12,7 +14,7 @@ import lombok.Setter;
 public class LoginResponse {
     private String accessToken;
     private String tokenType;
-    private Long userId;
+    private UUID userId;
     private String email;
     private String username;
     private String role;

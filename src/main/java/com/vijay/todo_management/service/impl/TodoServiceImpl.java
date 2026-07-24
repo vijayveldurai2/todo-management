@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -93,7 +94,7 @@ public class TodoServiceImpl implements TodoService {
     }
 
     @Override
-    public TodoDto getTodoById(Long id){
+    public TodoDto getTodoById(UUID id){
         Todo todo = todoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Todo not found with the id" + id));
         return mapToDto(todo);
@@ -108,7 +109,7 @@ public class TodoServiceImpl implements TodoService {
     }
 
     @Override
-    public TodoDto updateTodo(Long id, TodoDto todoDto){
+    public TodoDto updateTodo(UUID id, TodoDto todoDto){
         Todo existing = todoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Todo not found with id" + id));
         existing.setTitle(todoDto.getTitle());
@@ -130,7 +131,7 @@ public class TodoServiceImpl implements TodoService {
     }
 
     @Override
-    public void deleteTodo(Long id){
+    public void deleteTodo(UUID id){
         todoRepository.findById(id).orElseThrow(() -> new RuntimeException("Todo not found with id" + id));
         todoRepository.deleteById(id);
     }
