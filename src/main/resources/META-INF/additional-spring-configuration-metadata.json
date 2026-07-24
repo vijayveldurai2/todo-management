@@ -24,6 +24,16 @@
       "name": "app.verification.base-url",
       "type": "java.lang.String",
       "description": "Base URL used to build the email verification link (raw token is appended as ?token=...)."
+    },
+    {
+      "name": "app.jwt.secret",
+      "type": "java.lang.String",
+      "description": "HMAC secret used to sign JWT access tokens (must be long and random in production)."
+    },
+    {
+      "name": "app.jwt.expiration-ms",
+      "type": "java.lang.Long",
+      "description": "JWT access token lifetime in milliseconds."
     }
   ]
 }
