@@ -168,8 +168,15 @@ public class AuthServiceImpl implements AuthService {
         identity.setCreatedAt(now);
         userIdentityRepository.save(identity);
 
-        // Removing pending cascades its verification_tokens (ON DELETE CASCADE)
-        pendingSignupRepository.delete(pending);
+        // Keep the token as an audit row: mark used, link to user, unlink from pending
+        // so deleting pending does NOT cascade-delete this token.
+        Long pendingId = pending.getId();
+        token.setUsedAt(now);
+        token.setUser(user);
+        token.setPendingSignup(null);
+        verificationTokenRepository.saveAndFlush(token);
+
+        pendingSignupRepository.deleteById(pendingId);
 
         return new VerifyResponse(
                 "Email verified successfully. You can now log in.",
