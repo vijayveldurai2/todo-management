@@ -6,10 +6,12 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Setter
@@ -19,8 +21,10 @@ import java.util.Set;
 @Table(name = "todos")
 public class Todo {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue
+    @UuidGenerator
+    @Column(length = 36, updatable = false, nullable = false)
+    private UUID id;
 
     @Column(nullable = false)
     private String title;
@@ -56,7 +60,7 @@ public class Todo {
     private Set<Tags> tags = new HashSet<>();
 
     @ManyToOne
-    @JoinColumn(name = "board_id", nullable = true) // will flip to false once V4 backfills existing rows
+    @JoinColumn(name = "board_id", nullable = true)
     private Board board;
 
     @PrePersist

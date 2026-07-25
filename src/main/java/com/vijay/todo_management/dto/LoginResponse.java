@@ -11,10 +11,11 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserDto {
-    private UUID id;
-    private String username;
+public class LoginResponse {
+    private String accessToken;
+    private String tokenType;
+    private UUID userId;
     private String email;
-    private String password; // write-only in practice
-    private String name;
+    private String username;
+    private String role;
 }

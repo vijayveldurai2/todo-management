@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -58,7 +59,7 @@ public class BoardServiceImpl implements BoardService {
     }
 
     @Override
-    public BoardDto getBoardById(Long id) {
+    public BoardDto getBoardById(UUID id) {
         Board board = boardRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Board not found with id: " + id));
         return mapToDto(board);
@@ -70,7 +71,7 @@ public class BoardServiceImpl implements BoardService {
     }
 
     @Override
-    public BoardDto updateBoard(Long id, BoardDto boardDto) {
+    public BoardDto updateBoard(UUID id, BoardDto boardDto) {
         Board existing = boardRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Board not found with id: " + id));
         existing.setName(boardDto.getName());
@@ -88,7 +89,7 @@ public class BoardServiceImpl implements BoardService {
     }
 
     @Override
-    public void deleteBoard(Long id) {
+    public void deleteBoard(UUID id) {
         boardRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Board not found with id: " + id));
         boardRepository.deleteById(id);

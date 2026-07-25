@@ -11,10 +11,9 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserDto {
-    private UUID id;
-    private String username;
+public class VerifyResponse {
+    private String message;
+    private UUID userId;
     private String email;
-    private String password; // write-only in practice
-    private String name;
+    private String username;
 }

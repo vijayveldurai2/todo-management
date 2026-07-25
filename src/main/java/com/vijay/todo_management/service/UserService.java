@@ -3,11 +3,12 @@ package com.vijay.todo_management.service;
 import com.vijay.todo_management.dto.UserDto;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface UserService {
     UserDto addUser(UserDto userDto);
-    UserDto getUserById(Long id);
+    UserDto getUserById(UUID id);
     List<UserDto> getAllUsers();
-    UserDto updateUser(Long id, UserDto userDto);
-    void deleteUser(Long id);
+    UserDto updateUser(UUID id, UserDto userDto);
+    void deleteUser(UUID id);
 }
