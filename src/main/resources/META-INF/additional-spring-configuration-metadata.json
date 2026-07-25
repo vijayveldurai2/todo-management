@@ -9,5 +9,21 @@
       "name": "spring.flyway.baseline-on-migrate",
       "type": "java.lang.String",
       "description": "Description for spring.flyway.baseline-on-migrate."
+    },
+    {
+      "name": "app.mail.enabled",
+      "type": "java.lang.Boolean",
+      "description": "When true, send verification email via SMTP. When false, log the verification link instead."
+    },
+    {
+      "name": "app.mail.from",
+      "type": "java.lang.String",
+      "description": "From address used for outbound application emails."
+    },
+    {
+      "name": "app.verification.base-url",
+      "type": "java.lang.String",
+      "description": "Base URL used to build the email verification link (raw token is appended as ?token=...)."
     }
-  ] }
+  ]
+}
