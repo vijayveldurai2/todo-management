@@ -3,12 +3,12 @@ package com.vijay.todo_management.service;
 import com.vijay.todo_management.dto.TodoDto;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface TodoService {
     TodoDto addTodo(TodoDto todoDto);
-    TodoDto getTodoById(Long id);
+    TodoDto getTodoById(UUID id);
     List<TodoDto> getAllTodos();
-    TodoDto updateTodo(Long id, TodoDto todoDto);
-    void deleteTodo(Long id);
-
+    TodoDto updateTodo(UUID id, TodoDto todoDto);
+    void deleteTodo(UUID id);
 }

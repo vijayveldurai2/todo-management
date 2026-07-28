@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/todos")
@@ -28,32 +29,18 @@ public class TodoController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TodoDto> getTodoById(@PathVariable Long id){
+    public ResponseEntity<TodoDto> getTodoById(@PathVariable UUID id){
         return ResponseEntity.ok(todoService.getTodoById(id));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TodoDto> updateTodo(@PathVariable Long id, @RequestBody TodoDto todoDto){
+    public ResponseEntity<TodoDto> updateTodo(@PathVariable UUID id, @RequestBody TodoDto todoDto){
         return ResponseEntity.ok(todoService.updateTodo(id, todoDto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTodo(@PathVariable Long id){
+    public ResponseEntity<Void> deleteTodo(@PathVariable UUID id){
         todoService.deleteTodo(id);
         return ResponseEntity.noContent().build();
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
