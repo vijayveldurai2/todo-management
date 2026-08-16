@@ -1,8 +1,13 @@
 import React from 'react';
 import { useAppDispatch } from '../../store';
 import { setCreateTaskModalOpen } from '../../store/uiSlice';
+import { Board } from '../../types';
 
-export const CalendarView: React.FC = () => {
+interface CalendarViewProps {
+  board?: Board;
+}
+
+export const CalendarView: React.FC<CalendarViewProps> = ({ board }) => {
   const dispatch = useAppDispatch();
 
   // Calendar month dates data

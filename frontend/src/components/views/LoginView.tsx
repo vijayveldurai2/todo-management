@@ -31,7 +31,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ initialMode }) => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      const from = (location.state as any)?.from?.pathname || '/main-workspace';
+      const from = (location.state as any)?.from?.pathname || '/';
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, navigate, location]);
@@ -153,7 +153,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ initialMode }) => {
         ).unwrap();
 
         dispatch(setActiveView('workspace'));
-        navigate('/main-workspace');
+        navigate('/');
       } catch (err: any) {
         setLocalError(err.message || 'Invalid login credentials or email unverified.');
       } finally {
@@ -184,7 +184,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ initialMode }) => {
       setIsLocalLoading(false);
       dispatch(loginWithOAuth(provider));
       dispatch(setActiveView('workspace'));
-      navigate('/main-workspace');
+      navigate('/');
     }, 800);
   };
 
@@ -246,7 +246,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ initialMode }) => {
           <button
             onClick={() => {
               dispatch(setActiveView('workspace'));
-              navigate('/main-workspace');
+              navigate('/');
             }}
             className="text-xs font-semibold text-[var(--text-on-surface-variant)] hover:text-[var(--color-primary)] transition-colors flex items-center gap-1 cursor-pointer"
           >

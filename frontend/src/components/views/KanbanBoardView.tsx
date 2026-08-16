@@ -34,16 +34,16 @@ interface KanbanBoardViewProps {
 }
 
 // Float position calculator for optimistic insertions
-function calculatePosition<T extends { position: number }>(items: T[], targetIndex: number): number {
+function calculatePosition<T extends { position?: number }>(items: T[], targetIndex: number): number {
   if (items.length === 0) return 1000;
   if (targetIndex <= 0) {
-    return items[0].position / 2;
+    return (items[0].position ?? 1000) / 2;
   }
   if (targetIndex >= items.length) {
-    return items[items.length - 1].position + 1000;
+    return (items[items.length - 1].position ?? 1000) + 1000;
   }
-  const prevPos = items[targetIndex - 1].position;
-  const nextPos = items[targetIndex].position;
+  const prevPos = items[targetIndex - 1].position ?? 1000;
+  const nextPos = items[targetIndex].position ?? 1000;
   return (prevPos + nextPos) / 2;
 }
 

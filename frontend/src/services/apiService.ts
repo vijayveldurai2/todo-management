@@ -190,12 +190,43 @@ export const apiService = {
 
   // Workspaces
   async getWorkspaces(): Promise<Workspace[]> {
-    const apiRes = await fetchJson<Workspace[]>('/api/workspaces');
+    const user = await this.getCurrentUser();
+    if (!user?.id) {
+      return backendStore.getWorkspaces();
+    }
+    return this.getWorkspacesForUser(user.id);
+  },
+
+  async getWorkspacesForUser(userId: string): Promise<Workspace[]> {
+    const apiRes = await fetchJson<Workspace[]>(`/api/workspaces?userId=${encodeURIComponent(userId)}`);
     return apiRes || backendStore.getWorkspaces();
   },
 
+  async createWorkspace(data: { name: string; description?: string }, creatorId: string): Promise<Workspace> {
+    const res = await fetch(`${BASE_URL}/api/workspaces?creatorId=${encodeURIComponent(creatorId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: data.name,
+        description: data.description || '',
+      }),
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.message || errJson.error || `Create workspace failed with status ${res.status}`);
+    }
+
+    const created = await res.json();
+    if (created && created.slug) {
+      return created;
+    }
+
+    return backendStore.createWorkspace(data.name, data.description);
+  },
+
   async getWorkspaceBySlug(workspaceSlug: string): Promise<Workspace> {
-    const apiRes = await fetchJson<Workspace>(`/api/workspaces/${workspaceSlug}`);
+    const apiRes = await fetchJson<Workspace>(`/api/workspaces/slug/${encodeURIComponent(workspaceSlug)}`);
     if (apiRes) return apiRes;
     const fallback = backendStore.getWorkspaceBySlug(workspaceSlug);
     if (!fallback) throw new Error('not_found');
