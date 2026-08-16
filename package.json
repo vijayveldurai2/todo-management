@@ -1,0 +1,26 @@
+{
+  "name": "todo-management",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Todo management monorepo (Spring Boot + React)",
+  "homepage": "https://github.com/vijayveldurai2/todo-management#readme",
+  "bugs": {
+    "url": "https://github.com/vijayveldurai2/todo-management/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vijayveldurai2/todo-management.git"
+  },
+  "license": "ISC",
+  "author": "Vijay",
+  "scripts": {
+    "dev": "concurrently -n be,fe -c blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && ./mvnw spring-boot:run",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "npm install && cd frontend && npm install",
+    "build:frontend": "cd frontend && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
