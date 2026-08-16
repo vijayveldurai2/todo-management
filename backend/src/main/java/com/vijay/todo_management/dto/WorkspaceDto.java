@@ -5,18 +5,19 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class BoardDto {
+public class WorkspaceDto {
     private UUID id;
-    private UUID projectId;
     private String name;
     private String slug;
     private String description;
-    private String type;     // BOARD, SPRINT
-    private int position;
+    private UUID createdBy;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

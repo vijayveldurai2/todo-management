@@ -7,5 +7,5 @@ import java.util.List;
 import java.util.UUID;
 
 public interface BoardRepository extends JpaRepository<Board, UUID> {
-    List<Board> findByOwner_Id(UUID ownerId);
+    List<Board> findByProject_Id(UUID projectId);
 }
