@@ -11,12 +11,10 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class BoardDto {
+public class BoardColumnDto {
     private UUID id;
-    private UUID projectId;
+    private UUID boardId;
     private String name;
-    private String slug;
-    private String description;
-    private String type;     // BOARD, SPRINT
     private int position;
+    private boolean isDefault;
 }

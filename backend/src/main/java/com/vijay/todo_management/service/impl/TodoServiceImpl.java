@@ -10,6 +10,8 @@ import com.vijay.todo_management.repository.TagsRepository;
 import com.vijay.todo_management.repository.TodoRepository;
 import com.vijay.todo_management.service.TodoService;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +21,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@Setter
+@Getter
 @AllArgsConstructor
 public class TodoServiceImpl implements TodoService {
 

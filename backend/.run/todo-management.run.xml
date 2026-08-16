@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="todo-management" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="com.vijay.todo_management.TodoManagementApplication" />
+    <module name="todo-management" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
