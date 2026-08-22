@@ -66,13 +66,6 @@ public class WorkspaceController {
         return ResponseEntity.ok(workspaceService.getMembers(workspaceId));
     }
 
-    @PostMapping("/{workspaceId}/members")
-    public ResponseEntity<WorkspaceMemberDto> addMember(
-            @PathVariable UUID workspaceId,
-            @RequestBody Map<String, UUID> body) {
-        UUID userId = body.get("userId");
-        return new ResponseEntity<>(workspaceService.addMember(workspaceId, userId), HttpStatus.CREATED);
-    }
 
     @PutMapping("/{workspaceId}/members/{userId}/role")
     public ResponseEntity<WorkspaceMemberDto> changeMemberRole(
