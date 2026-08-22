@@ -1,6 +1,0 @@
-{
-  "name": "TaskFlow",
-  "description": "Scalable workspace, task and project management app with Redux state, theme customizer, offline sync support, and OAuth session management.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

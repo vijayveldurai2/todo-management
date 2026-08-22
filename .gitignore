@@ -1,38 +1,35 @@
-# Root
-node_modules/
-.DS_Store
-*.log
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
 
-# Env secrets
 .env
-.env.local
-backend/.env
-frontend/.env
-frontend/.env.local
 
-# Backend (Maven)
-backend/target/
-backend/.mvn/wrapper/maven-wrapper.jar
-!backend/src/main/**/target/
-!backend/src/test/**/target/
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
 
-# Frontend
-frontend/node_modules/
-frontend/dist/
-frontend/build/
-frontend/coverage/
-
-# IDE
-.idea/
-backend/.idea/
+### IntelliJ IDEA ###
+.idea
 *.iws
 *.iml
 *.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
 .vscode/
-.classpath
-.project
-.settings/
-.factorypath
-.springBeans
-.sts4-cache
-.apt_generated
