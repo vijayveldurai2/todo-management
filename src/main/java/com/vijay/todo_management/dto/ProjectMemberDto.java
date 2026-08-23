@@ -18,7 +18,9 @@ public class ProjectMemberDto {
     private UUID userId;
     private String userName;   // denormalized for display
     private String userEmail;
-    private String role;       // USER, DEVELOPER, TESTER, LEAD
+    private UUID roleId;
+    private String roleName;
+    private LocalDateTime joinedAt;
     private LocalDateTime createdAt;
 
     // Note: SUPER_ADMIN never appears here — enforced via workspace-level auth check,
