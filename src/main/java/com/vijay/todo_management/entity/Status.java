@@ -1,6 +1,6 @@
 package com.vijay.todo_management.entity;
 
-import com.vijay.todo_management.enums.BoardType;
+import com.vijay.todo_management.enums.StatusCategory;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -16,10 +16,13 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "boards")
-@Inheritance(strategy = InheritanceType.JOINED)
-@DiscriminatorColumn(name = "board_type", discriminatorType = DiscriminatorType.STRING)
-public abstract class Board {
+@Table(
+        name = "statuses",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_statuses_project_name", columnNames = {"project_id", "name"})
+        }
+)
+public class Status {
 
     @Id
     @GeneratedValue
@@ -31,8 +34,15 @@ public abstract class Board {
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
-    @Column(nullable = false, length = 120)
+    @Column(nullable = false, length = 100)
     private String name;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private StatusCategory category;
+
+    @Column(nullable = false)
+    private int position;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -50,7 +60,4 @@ public abstract class Board {
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
-
-    @Transient
-    public abstract BoardType getBoardType();
 }

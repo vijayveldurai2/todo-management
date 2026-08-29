@@ -8,6 +8,8 @@ import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -24,18 +26,27 @@ public class BoardColumn {
     @Column(length = 36, updatable = false, nullable = false)
     private UUID id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "board_id", nullable = false)
     private Board board;
 
-    @Column(nullable = false, length = 50)
+    @Column(nullable = false, length = 100)
     private String name;
 
     @Column(nullable = false)
-    private int position; // drag-and-drop order within board
+    private int position;
 
-    @Column(name = "is_default", nullable = false)
-    private boolean isDefault = false; // marks the 4 seeded columns (Todo, Working, Testing, Done)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "primary_status_id", nullable = false)
+    private Status primaryStatus;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "board_column_additional_statuses",
+            joinColumns = @JoinColumn(name = "board_column_id"),
+            inverseJoinColumns = @JoinColumn(name = "status_id")
+    )
+    private Set<Status> additionalStatuses = new HashSet<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
