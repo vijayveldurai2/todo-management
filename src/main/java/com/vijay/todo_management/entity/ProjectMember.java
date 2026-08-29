@@ -10,6 +10,10 @@ import org.hibernate.annotations.UuidGenerator;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * Maps a user to a project with a dynamic, admin-defined role.
+ * A user's role can differ per project; roles are defined via {@link ProjectRole}.
+ */
 @Entity
 @Getter
 @Setter
@@ -24,7 +28,6 @@ import java.util.UUID;
 )
 public class ProjectMember {
 
-
     @Id
     @GeneratedValue
     @UuidGenerator
@@ -32,16 +35,20 @@ public class ProjectMember {
     private UUID id;
 
     @ManyToOne
-    @JoinColumn(name = "project_id", nullable = false)
+    @JoinColumn(name = "project_id", nullable = false, updatable = false)
     private Project project;
 
     @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false, updatable = false)
     private User user;
 
+    /**
+     * The project-specific role for this member.
+     * Set by the project admin; can be changed without removing/re-adding the member.
+     */
     @ManyToOne
     @JoinColumn(name = "project_role_id", nullable = false)
-    private ProjectRole role;
+    private ProjectRole projectRole;
 
     @Column(name = "joined_at", nullable = false, updatable = false)
     private LocalDateTime joinedAt;
@@ -54,9 +61,9 @@ public class ProjectMember {
 
     @PrePersist
     protected void onCreate() {
-        this.joinedAt = LocalDateTime.now();
-        this.createdAt = this.joinedAt;
-        this.updatedAt = this.createdAt;
+        this.joinedAt   = LocalDateTime.now();
+        this.createdAt  = this.joinedAt;
+        this.updatedAt  = this.joinedAt;
     }
 
     @PreUpdate

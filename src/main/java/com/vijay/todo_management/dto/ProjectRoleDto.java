@@ -15,7 +15,8 @@ import java.util.UUID;
 public class ProjectRoleDto {
     private UUID id;
     private UUID projectId;
-    private String name;
-    private boolean isAdmin;
+    private String name;       // admin-defined role name, e.g. "Developer", "Tester"
+    private boolean isAdmin;   // if true, bearer has project-admin privileges
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

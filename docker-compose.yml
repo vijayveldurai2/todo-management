@@ -1,0 +1,19 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: todo-management-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    # AOF persistence: survives container restarts in local dev.
+    # Not a production durability decision — revisit before deploying.
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    # TODO (production): add requirepass + TLS, or use a managed Redis
+    #   (e.g. Aiven Redis, matching the Aiven MySQL pattern already in use).
+    #   Do NOT expose a passwordless Redis on a public network.
+
+volumes:
+  redis-data:
+  # MySQL is intentionally NOT in this file — it stays as-is (local + Aiven).
