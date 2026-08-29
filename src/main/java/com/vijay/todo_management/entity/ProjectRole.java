@@ -11,8 +11,9 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Maps a user to a project with a dynamic, admin-defined role.
- * A user's role can differ per project; roles are defined via {@link ProjectRole}.
+ * Admin-defined role within a project.
+ * Each project has its own set of roles (e.g. "Developer", "Tester", "Lead").
+ * Roles are created by the project admin and can differ across projects.
  */
 @Entity
 @Getter
@@ -20,13 +21,13 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(
-        name = "project_members",
+        name = "project_roles",
         uniqueConstraints = @UniqueConstraint(
-                name = "uk_project_members_project_user",
-                columnNames = {"project_id", "user_id"}
+                name = "uk_project_roles_project_name",
+                columnNames = {"project_id", "name"}
         )
 )
-public class ProjectMember {
+public class ProjectRole {
 
     @Id
     @GeneratedValue
@@ -38,20 +39,16 @@ public class ProjectMember {
     @JoinColumn(name = "project_id", nullable = false, updatable = false)
     private Project project;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false, updatable = false)
-    private User user;
+    /** Human-readable role name defined by the project admin, e.g. "Developer", "Tester". */
+    @Column(nullable = false, length = 50)
+    private String name;
 
     /**
-     * The project-specific role for this member.
-     * Set by the project admin; can be changed without removing/re-adding the member.
+     * When true, members with this role have project-admin privileges
+     * (can manage members, roles, boards, etc.).
      */
-    @ManyToOne
-    @JoinColumn(name = "project_role_id", nullable = false)
-    private ProjectRole projectRole;
-
-    @Column(name = "joined_at", nullable = false, updatable = false)
-    private LocalDateTime joinedAt;
+    @Column(name = "is_admin", nullable = false)
+    private boolean isAdmin = false;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -61,9 +58,8 @@ public class ProjectMember {
 
     @PrePersist
     protected void onCreate() {
-        this.joinedAt   = LocalDateTime.now();
-        this.createdAt  = this.joinedAt;
-        this.updatedAt  = this.joinedAt;
+        this.createdAt  = LocalDateTime.now();
+        this.updatedAt  = this.createdAt;
     }
 
     @PreUpdate

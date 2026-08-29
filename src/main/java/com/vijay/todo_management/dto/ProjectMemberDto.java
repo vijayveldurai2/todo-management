@@ -16,11 +16,11 @@ public class ProjectMemberDto {
     private UUID id;
     private UUID projectId;
     private UUID userId;
-    private String userName;   // denormalized for display
-    private String userEmail;
-    private String role;       // USER, DEVELOPER, TESTER, LEAD
-    private LocalDateTime createdAt;
-
-    // Note: SUPER_ADMIN never appears here — enforced via workspace-level auth check,
-    // no project_members row is ever created for SA, per earlier design decision.
+    private String userName;     // denormalized for display
+    private String userEmail;    // denormalized for display
+    private UUID projectRoleId;  // the assigned role's ID
+    private String roleName;     // the assigned role's name (admin-defined)
+    private boolean roleIsAdmin; // whether this role has project-admin privileges
+    private LocalDateTime joinedAt;
+    private LocalDateTime updatedAt;
 }
