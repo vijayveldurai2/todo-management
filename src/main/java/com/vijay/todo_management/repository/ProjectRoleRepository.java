@@ -4,6 +4,7 @@ import com.vijay.todo_management.entity.ProjectRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface ProjectRoleRepository extends JpaRepository<ProjectRole, UUID> {
@@ -13,4 +14,9 @@ public interface ProjectRoleRepository extends JpaRepository<ProjectRole, UUID> 
 
     /** Check whether a role name already exists in a project (for duplicate validation). */
     boolean existsByProjectIdAndNameIgnoreCase(UUID projectId, String name);
+    List<ProjectRole> findByProject_Slug(String projectSlug);
+    Optional<ProjectRole> findByProject_SlugAndId(String projectSlug, UUID roleId);
+    boolean existsByProject_IdAndName(UUID projectId, String name);
+    long countByProject_IdAndIsAdminTrue(UUID projectId);
+   
 }

@@ -19,6 +19,7 @@ public class ProjectDto {
     private String slug;
     private String description;
     private String prefixCode;   // e.g. "WR" — immutable after creation
+    private String status;       // ACTIVE or ARCHIVED
     private UUID createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
