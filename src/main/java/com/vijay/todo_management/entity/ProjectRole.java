@@ -16,14 +16,13 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(
-        name = "project_members",
+        name = "project_roles",
         uniqueConstraints = @UniqueConstraint(
-                name = "uk_project_members_project_user",
-                columnNames = {"project_id", "user_id"}
+                name = "uk_project_roles_project_name",
+                columnNames = {"project_id", "name"}
         )
 )
-public class ProjectMember {
-
+public class ProjectRole {
 
     @Id
     @GeneratedValue
@@ -35,32 +34,17 @@ public class ProjectMember {
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(nullable = false, length = 50)
+    private String name;
 
-    @ManyToOne
-    @JoinColumn(name = "project_role_id", nullable = false)
-    private ProjectRole role;
-
-    @Column(name = "joined_at", nullable = false, updatable = false)
-    private LocalDateTime joinedAt;
+    @Column(name = "is_admin", nullable = false)
+    private boolean isAdmin = false;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
     @PrePersist
     protected void onCreate() {
-        this.joinedAt = LocalDateTime.now();
-        this.createdAt = this.joinedAt;
-        this.updatedAt = this.createdAt;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
     }
 }

@@ -24,6 +24,11 @@ import java.util.UUID;
 )
 public class Project {
 
+    public enum Status {
+        ACTIVE,
+        ARCHIVED
+    }
+
     @Id
     @GeneratedValue
     @UuidGenerator
@@ -42,6 +47,10 @@ public class Project {
 
     @Column(length = 500)
     private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Status status = Status.ACTIVE;
 
     @Column(name = "prefix_code", nullable = false, length = 10, updatable = false)
     private String prefixCode; // e.g. 'WR' — immutable once set
