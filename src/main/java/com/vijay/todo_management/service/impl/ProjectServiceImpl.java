@@ -128,7 +128,7 @@ public class ProjectServiceImpl implements ProjectService {
         ProjectMember projectMember = new ProjectMember();
         projectMember.setProject(savedProject);
         projectMember.setUser(creator);
-        projectMember.setRole(adminRole);
+        projectMember.setProjectRole(adminRole);
         projectMemberRepository.save(projectMember);
 
         return mapToDto(savedProject);
@@ -183,7 +183,7 @@ public class ProjectServiceImpl implements ProjectService {
                 .orElse(false);
                 
         boolean isProjectAdmin = projectMemberRepository.findByProject_IdAndUser_Id(project.getId(), userId)
-                .map(pm -> pm.getRole().isAdmin())
+                .map(pm -> pm.getProjectRole().isAdmin())
                 .orElse(false);
                 
         if (!isSuperAdmin && !isProjectAdmin) {
@@ -210,7 +210,7 @@ public class ProjectServiceImpl implements ProjectService {
                 .orElse(false);
                 
         boolean isProjectAdmin = projectMemberRepository.findByProject_IdAndUser_Id(project.getId(), userId)
-                .map(pm -> pm.getRole().isAdmin())
+                .map(pm -> pm.getProjectRole().isAdmin())
                 .orElse(false);
                 
         if (!isSuperAdmin && !isProjectAdmin) {

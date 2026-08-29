@@ -37,10 +37,11 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         dto.setUserId(member.getUser().getId());
         dto.setUserName(member.getUser().getName());
         dto.setUserEmail(member.getUser().getEmail());
-        dto.setRoleId(member.getRole().getId());
-        dto.setRoleName(member.getRole().getName());
+        dto.setProjectRoleId(member.getProjectRole().getId());
+        dto.setRoleName(member.getProjectRole().getName());
+        dto.setRoleIsAdmin(member.getProjectRole().isAdmin());
         dto.setJoinedAt(member.getJoinedAt());
-        dto.setCreatedAt(member.getCreatedAt());
+        dto.setUpdatedAt(member.getUpdatedAt());
         return dto;
     }
 
@@ -57,7 +58,7 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         if (isSuperAdmin) return;
         
         boolean isProjectAdmin = projectMemberRepository.findByProject_IdAndUser_Id(project.getId(), userId)
-                .map(pm -> pm.getRole().isAdmin())
+                .map(pm -> pm.getProjectRole().isAdmin())
                 .orElse(false);
                 
         if (!isProjectAdmin) {
@@ -121,7 +122,7 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         ProjectMember member = new ProjectMember();
         member.setProject(project);
         member.setUser(user);
-        member.setRole(role);
+        member.setProjectRole(role);
         
         return mapToDto(projectMemberRepository.save(member));
     }
@@ -142,7 +143,7 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
             throw new RuntimeException("Role does not belong to this project");
         }
 
-        member.setRole(newRole);
+        member.setProjectRole(newRole);
         return mapToDto(projectMemberRepository.save(member));
     }
 

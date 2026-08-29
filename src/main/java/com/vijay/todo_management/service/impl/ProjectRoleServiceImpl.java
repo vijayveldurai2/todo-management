@@ -55,7 +55,7 @@ public class ProjectRoleServiceImpl implements ProjectRoleService {
         if (isSuperAdmin) return;
         
         boolean isProjectAdmin = projectMemberRepository.findByProject_IdAndUser_Id(project.getId(), userId)
-                .map(pm -> pm.getRole().isAdmin())
+                .map(pm -> pm.getProjectRole().isAdmin())
                 .orElse(false);
                 
         if (!isProjectAdmin) {
@@ -143,7 +143,7 @@ public class ProjectRoleServiceImpl implements ProjectRoleService {
         }
 
         // Block if members currently hold it
-        long membersWithRole = projectMemberRepository.countByRole_Id(roleId);
+        long membersWithRole = projectMemberRepository.countByProjectRole_Id(roleId);
         if (membersWithRole > 0) {
             throw new RuntimeException("Cannot delete role: " + membersWithRole + " members currently hold it");
         }
