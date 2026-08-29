@@ -42,6 +42,7 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final com.vijay.todo_management.security.RedisSessionService redisSessionService;
 
     public AuthServiceImpl(
             PendingSignupRepository pendingSignupRepository,
@@ -50,7 +51,8 @@ public class AuthServiceImpl implements AuthService {
             UserIdentityRepository userIdentityRepository,
             EmailService emailService,
             PasswordEncoder passwordEncoder,
-            JwtService jwtService
+            JwtService jwtService,
+            com.vijay.todo_management.security.RedisSessionService redisSessionService
     ) {
         this.pendingSignupRepository = pendingSignupRepository;
         this.verificationTokenRepository = verificationTokenRepository;
@@ -59,6 +61,7 @@ public class AuthServiceImpl implements AuthService {
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.redisSessionService = redisSessionService;
     }
 
     @Override
@@ -189,6 +192,12 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginResponse login(LoginRequest request) {
+        return login(request, "unknown", "unknown");
+    }
+
+    @Override
+    @Transactional
+    public LoginResponse login(LoginRequest request, String ip, String device) {
         requireText(request.getLogin(), "login");
         requireText(request.getPassword(), "password");
 
@@ -210,7 +219,12 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
-        String accessToken = jwtService.generateToken(user);
+        String jti = UUID.randomUUID().toString();
+        String accessToken = jwtService.generateToken(user, jti);
+
+        // Register active session in Redis allowlist
+        redisSessionService.createSession(user.getId(), jti, jwtService.getExpirationSeconds(), device, ip);
+
         return new LoginResponse(
                 accessToken,
                 "Bearer",
@@ -219,6 +233,20 @@ public class AuthServiceImpl implements AuthService {
                 user.getUsername(),
                 user.getRole().name()
         );
+    }
+
+    @Override
+    public void logout(UUID userId, String jti) {
+        if (userId != null && jti != null) {
+            redisSessionService.deleteSession(userId, jti);
+        }
+    }
+
+    @Override
+    public void logoutAll(UUID userId) {
+        if (userId != null) {
+            redisSessionService.deleteAllSessions(userId);
+        }
     }
 
     private static void requireText(String value, String field) {

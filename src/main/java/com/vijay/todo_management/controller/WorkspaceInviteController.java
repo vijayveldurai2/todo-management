@@ -3,6 +3,7 @@ package com.vijay.todo_management.controller;
 import com.vijay.todo_management.dto.WorkspaceInviteDto;
 import com.vijay.todo_management.dto.WorkspaceInviteRequestDto;
 import com.vijay.todo_management.dto.WorkspaceMemberDto;
+import com.vijay.todo_management.security.CurrentUserProvider;
 import com.vijay.todo_management.service.WorkspaceInviteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -19,14 +20,11 @@ public class WorkspaceInviteController {
     @Autowired
     private WorkspaceInviteService workspaceInviteService;
 
-    // TODO: userId/inviterId are temporary stand-ins for the authenticated principal.
-    // Replace with SecurityContextHolder once Spring Security is wired in.
-
     @PostMapping("/{workspaceId}/invites")
     public ResponseEntity<WorkspaceInviteDto> createInvite(
             @PathVariable UUID workspaceId,
-            @RequestParam UUID inviterId,
             @RequestBody WorkspaceInviteRequestDto req) {
+        UUID inviterId = CurrentUserProvider.getCurrentUserId();
         return new ResponseEntity<>(workspaceInviteService.createInvite(workspaceId, inviterId, req), HttpStatus.CREATED);
     }
 
@@ -36,21 +34,20 @@ public class WorkspaceInviteController {
     }
 
     @GetMapping("/invites/mine")
-    public ResponseEntity<List<WorkspaceInviteDto>> getMyPendingInvites(@RequestParam UUID userId) {
+    public ResponseEntity<List<WorkspaceInviteDto>> getMyPendingInvites() {
+        UUID userId = CurrentUserProvider.getCurrentUserId();
         return ResponseEntity.ok(workspaceInviteService.getMyPendingInvites(userId));
     }
 
     @PostMapping("/invites/{inviteId}/accept")
-    public ResponseEntity<WorkspaceMemberDto> acceptInvite(
-            @PathVariable UUID inviteId,
-            @RequestParam UUID acceptingUserId) {
+    public ResponseEntity<WorkspaceMemberDto> acceptInvite(@PathVariable UUID inviteId) {
+        UUID acceptingUserId = CurrentUserProvider.getCurrentUserId();
         return ResponseEntity.ok(workspaceInviteService.acceptInvite(inviteId, acceptingUserId));
     }
 
     @PostMapping("/invites/{inviteId}/decline")
-    public ResponseEntity<Void> declineInvite(
-            @PathVariable UUID inviteId,
-            @RequestParam UUID decliningUserId) {
+    public ResponseEntity<Void> declineInvite(@PathVariable UUID inviteId) {
+        UUID decliningUserId = CurrentUserProvider.getCurrentUserId();
         workspaceInviteService.declineInvite(inviteId, decliningUserId);
         return ResponseEntity.noContent().build();
     }
@@ -63,9 +60,8 @@ public class WorkspaceInviteController {
 
     // Token-based variants, for the raw email-link path
     @PostMapping("/invites/accept-by-token")
-    public ResponseEntity<WorkspaceMemberDto> acceptInviteByToken(
-            @RequestParam String token,
-            @RequestParam UUID acceptingUserId) {
+    public ResponseEntity<WorkspaceMemberDto> acceptInviteByToken(@RequestParam String token) {
+        UUID acceptingUserId = CurrentUserProvider.getCurrentUserId();
         return ResponseEntity.ok(workspaceInviteService.acceptInviteByToken(token, acceptingUserId));
     }
 

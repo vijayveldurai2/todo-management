@@ -12,4 +12,10 @@ public interface AuthService {
     VerifyResponse verifyEmail(String rawToken);
 
     LoginResponse login(LoginRequest request);
+
+    LoginResponse login(LoginRequest request, String ip, String device);
+
+    void logout(java.util.UUID userId, String jti);
+
+    void logoutAll(java.util.UUID userId);
 }

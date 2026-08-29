@@ -5,15 +5,13 @@ import com.vijay.todo_management.dto.LoginResponse;
 import com.vijay.todo_management.dto.SignupRequest;
 import com.vijay.todo_management.dto.SignupResponse;
 import com.vijay.todo_management.dto.VerifyResponse;
+import com.vijay.todo_management.security.CurrentUserProvider;
+import com.vijay.todo_management.security.UserPrincipal;
 import com.vijay.todo_management.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
@@ -45,7 +43,31 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        String ip = getClientIp(httpRequest);
+        String device = httpRequest.getHeader("User-Agent");
+        return ResponseEntity.ok(authService.login(request, ip, device));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout() {
+        UserPrincipal principal = CurrentUserProvider.requireCurrentUserPrincipal();
+        authService.logout(principal.getId(), principal.getJti());
+        return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
+    }
+
+    @PostMapping("/logout-all")
+    public ResponseEntity<Map<String, String>> logoutAll() {
+        UserPrincipal principal = CurrentUserProvider.requireCurrentUserPrincipal();
+        authService.logoutAll(principal.getId());
+        return ResponseEntity.ok(Map.of("message", "Logged out from all devices successfully"));
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }
