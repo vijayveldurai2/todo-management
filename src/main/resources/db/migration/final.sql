@@ -306,22 +306,20 @@ CREATE TABLE `todos` (
   `title` varchar(255) NOT NULL,
   `description` varchar(255) NOT NULL,
   `priority` varchar(20) NOT NULL,
-  `completed` tinyint(1) NOT NULL,
-  `board_id` char(36) DEFAULT NULL,
-  `column_id` char(36) NOT NULL,
-  `position` int NOT NULL DEFAULT 0,           -- drag-and-drop order within column
+  `status_id` char(36) NOT NULL,
+  `sprint_id` char(36) DEFAULT NULL,
+  `position` int NOT NULL DEFAULT 0,
   `created_date` datetime NOT NULL,
   `modified_date` datetime NOT NULL,
   `due_date` datetime DEFAULT NULL,
-  `completed_date` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_todos_project_display_id` (`project_id`, `display_id`),
   KEY `fk_todos_project` (`project_id`),
-  KEY `fk_todos_board` (`board_id`),
-  KEY `fk_todos_column` (`column_id`),
+  KEY `fk_todos_status` (`status_id`),
+  KEY `fk_todos_sprint` (`sprint_id`),
   CONSTRAINT `fk_todos_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_todos_board` FOREIGN KEY (`board_id`) REFERENCES `boards` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_todos_column` FOREIGN KEY (`column_id`) REFERENCES `board_columns` (`id`) ON DELETE RESTRICT
+  CONSTRAINT `fk_todos_status` FOREIGN KEY (`status_id`) REFERENCES `statuses` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_todos_sprint` FOREIGN KEY (`sprint_id`) REFERENCES `sprint_boards` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- -----------------------------------------------------------------------------

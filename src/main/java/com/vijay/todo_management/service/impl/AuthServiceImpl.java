@@ -4,6 +4,7 @@ import com.vijay.todo_management.dto.LoginRequest;
 import com.vijay.todo_management.dto.LoginResponse;
 import com.vijay.todo_management.dto.SignupRequest;
 import com.vijay.todo_management.dto.SignupResponse;
+import com.vijay.todo_management.dto.UserDto;
 import com.vijay.todo_management.dto.VerifyResponse;
 import com.vijay.todo_management.entity.PendingSignup;
 import com.vijay.todo_management.entity.User;
@@ -249,9 +250,38 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    @Override
+    public UserDto me(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (!Boolean.TRUE.equals(user.getIsActive())) {
+            throw new RuntimeException("Account is disabled");
+        }
+        return mapToDto(user);
+    }
+
+    private static UserDto mapToDto(User user) {
+        UserDto dto = new UserDto();
+        dto.setId(user.getId());
+        dto.setUsername(user.getUsername());
+        dto.setEmail(user.getEmail());
+        dto.setName(user.getName());
+        dto.setLocation(user.getLocation());
+        dto.setAvatarUrl(user.getAvatarUrl());
+        dto.setActive(user.getIsActive() != null && user.getIsActive());
+        dto.setRole(user.getRole() != null ? user.getRole().name() : null);
+        dto.setPlan(user.getPlan() != null ? user.getPlan().name() : null);
+        dto.setEmailVerifiedAt(user.getEmailVerifiedAt());
+        dto.setCreatedAt(user.getCreatedAt());
+        dto.setUpdatedAt(user.getUpdatedAt());
+        dto.setLastLoginAt(user.getLastLoginAt());
+        return dto;
+    }
+
     private static void requireText(String value, String field) {
         if (value == null || value.isBlank()) {
             throw new RuntimeException(field + " is required");
         }
     }
 }
+

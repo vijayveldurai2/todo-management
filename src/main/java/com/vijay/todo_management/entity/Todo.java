@@ -33,7 +33,7 @@ public class Todo {
     @Column(length = 36, updatable = false, nullable = false)
     private UUID id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
@@ -48,21 +48,18 @@ public class Todo {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private Priority priority;
+    private Priority priority = Priority.MEDIUM;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "status_id", nullable = false)
+    private Status status;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sprint_id")
+    private SprintBoard sprint; // nullable — absence means backlog
 
     @Column(nullable = false)
-    private Boolean completed;
-
-    @ManyToOne
-    @JoinColumn(name = "board_id")
-    private Board board; // nullable — ON DELETE SET NULL at the DB level
-
-    @ManyToOne
-    @JoinColumn(name = "column_id", nullable = false)
-    private BoardColumn column;
-
-    @Column(nullable = false)
-    private int position = 0; // drag-and-drop order within column
+    private int position = 0; // drag-and-drop order within status / backlog
 
     @ManyToMany
     @JoinTable(
@@ -80,9 +77,6 @@ public class Todo {
 
     @Column(name = "due_date")
     private LocalDateTime dueDate;
-
-    @Column(name = "completed_date")
-    private LocalDateTime completedDate;
 
     @PrePersist
     protected void onCreate() {

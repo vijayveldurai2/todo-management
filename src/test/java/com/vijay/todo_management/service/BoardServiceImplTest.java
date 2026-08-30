@@ -45,6 +45,9 @@ class BoardServiceImplTest {
     @Mock
     private ProjectMemberRepository projectMemberRepository;
 
+    @Mock
+    private TodoRepository todoRepository;
+
     @InjectMocks
     private BoardServiceImpl boardService;
 
@@ -362,5 +365,79 @@ class BoardServiceImplTest {
 
         assertThrows(ForbiddenException.class,
                 () -> boardService.getBoards("test-ws", "test-proj", nonMemberUserId));
+    }
+
+    @Test
+    void testGetBoardById_KanbanBoard_MapsAllProjectTodosIntoColumns() {
+        mockSuperAdminAccess(userId);
+        Board board = new KanbanBoard();
+        board.setId(UUID.randomUUID());
+        board.setName("Kanban Board");
+        board.setProject(project);
+
+        BoardColumn col = new BoardColumn();
+        col.setId(UUID.randomUUID());
+        col.setBoard(board);
+        col.setName("To Do");
+        col.setPosition(0);
+        col.setPrimaryStatus(statusTodo);
+
+        Todo todo1 = new Todo();
+        todo1.setId(UUID.randomUUID());
+        todo1.setProject(project);
+        todo1.setTitle("Task 1");
+        todo1.setStatus(statusTodo);
+
+        Todo todo2 = new Todo();
+        todo2.setId(UUID.randomUUID());
+        todo2.setProject(project);
+        todo2.setTitle("Task 2");
+        todo2.setStatus(statusDone);
+
+        when(boardRepository.findByIdAndProject_Id(board.getId(), project.getId())).thenReturn(Optional.of(board));
+        when(boardColumnRepository.findByBoard_IdOrderByPositionAsc(board.getId())).thenReturn(List.of(col));
+        when(todoRepository.findByProject_Id(project.getId())).thenReturn(List.of(todo1, todo2));
+
+        BoardDto dto = boardService.getBoardById("test-ws", "test-proj", board.getId(), userId);
+
+        assertNotNull(dto);
+        assertEquals(1, dto.getColumns().size());
+        assertEquals(1, dto.getColumns().get(0).getTodos().size());
+        assertEquals("Task 1", dto.getColumns().get(0).getTodos().get(0).getTitle());
+    }
+
+    @Test
+    void testGetBoardById_SprintBoard_FiltersBySprintId() {
+        mockSuperAdminAccess(userId);
+        SprintBoard sprint = new SprintBoard();
+        sprint.setId(UUID.randomUUID());
+        sprint.setName("Sprint 1");
+        sprint.setProject(project);
+
+        BoardColumn col = new BoardColumn();
+        col.setId(UUID.randomUUID());
+        col.setBoard(sprint);
+        col.setName("To Do");
+        col.setPosition(0);
+        col.setPrimaryStatus(statusTodo);
+
+        Todo sprintTodo = new Todo();
+        sprintTodo.setId(UUID.randomUUID());
+        sprintTodo.setProject(project);
+        sprintTodo.setTitle("Sprint Task");
+        sprintTodo.setStatus(statusTodo);
+        sprintTodo.setSprint(sprint);
+
+        when(boardRepository.findByIdAndProject_Id(sprint.getId(), project.getId())).thenReturn(Optional.of(sprint));
+        when(boardColumnRepository.findByBoard_IdOrderByPositionAsc(sprint.getId())).thenReturn(List.of(col));
+        when(todoRepository.findByProject_IdAndSprint_Id(project.getId(), sprint.getId())).thenReturn(List.of(sprintTodo));
+
+        BoardDto dto = boardService.getBoardById("test-ws", "test-proj", sprint.getId(), userId);
+
+        assertNotNull(dto);
+        assertEquals(1, dto.getColumns().size());
+        assertEquals(1, dto.getColumns().get(0).getTodos().size());
+        assertEquals("Sprint Task", dto.getColumns().get(0).getTodos().get(0).getTitle());
+        verify(todoRepository).findByProject_IdAndSprint_Id(project.getId(), sprint.getId());
     }
 }
