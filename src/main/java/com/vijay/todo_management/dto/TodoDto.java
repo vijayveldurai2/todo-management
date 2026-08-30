@@ -6,7 +6,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -27,10 +30,23 @@ public class TodoDto {
     private int position;
     private Set<String> tagNames;
 
-    // Derived completion state (true only when status.category == DONE)
+    // ── Scheduling ──────────────────────────────────────────
+    private LocalDateTime startDateTime;
+    private LocalDateTime endDateTime;  // replaces dueDate
+
+    // ── Effort / Planning ───────────────────────────────────
+    private BigDecimal estimatedTime;   // decimal hours, e.g. 4.50 = 4h 30m
+    private BigDecimal remainingTime;   // decimal hours remaining
+    private Integer storyPoints;        // team-defined integer (e.g. Fibonacci)
+
+    // ── Assignments ─────────────────────────────────────────
+    private List<TodoAssignmentDto> assignments = new ArrayList<>();
+
+    // ── Derived ─────────────────────────────────────────────
+    /** true only when status.category == DONE */
     private Boolean isDone;
 
+    // ── Audit ────────────────────────────────────────────────
     private LocalDateTime createdDate;
     private LocalDateTime modifiedDate;
-    private LocalDateTime dueDate;
 }

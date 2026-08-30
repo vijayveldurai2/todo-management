@@ -1,5 +1,7 @@
 package com.vijay.todo_management.service;
 
+import com.vijay.todo_management.dto.TodoAssignmentDto;
+import com.vijay.todo_management.dto.TodoAssignmentRequest;
 import com.vijay.todo_management.dto.TodoCreateRequest;
 import com.vijay.todo_management.dto.TodoDto;
 import com.vijay.todo_management.dto.TodoStatusUpdateRequest;
@@ -25,4 +27,12 @@ public interface TodoService {
     TodoDto assignSprint(String workspaceSlug, String projectSlug, UUID sprintId, UUID todoId, UUID userId);
 
     TodoDto removeSprintAssignment(String workspaceSlug, String projectSlug, UUID sprintId, UUID todoId, UUID userId);
+
+    // ── Assignment management ────────────────────────────────────────────────
+
+    TodoAssignmentDto addAssignment(String workspaceSlug, String projectSlug, UUID todoId, TodoAssignmentRequest request, UUID userId);
+
+    void removeAssignment(String workspaceSlug, String projectSlug, UUID todoId, UUID assignmentId, UUID userId);
+
+    TodoAssignmentDto setPrimaryAssignment(String workspaceSlug, String projectSlug, UUID todoId, UUID assignmentId, UUID userId);
 }

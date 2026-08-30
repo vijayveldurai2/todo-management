@@ -53,6 +53,27 @@ public class BoardServiceImpl implements BoardService {
         return dto;
     }
 
+    private TodoAssignmentDto mapAssignmentToDto(TodoAssignment a) {
+        TodoAssignmentDto dto = new TodoAssignmentDto();
+        dto.setId(a.getId());
+        dto.setTodoId(a.getTodo() != null ? a.getTodo().getId() : null);
+        if (a.getUser() != null) {
+            dto.setUserId(a.getUser().getId());
+            String displayName = a.getUser().getName() != null && !a.getUser().getName().isBlank()
+                    ? a.getUser().getName() : a.getUser().getUsername();
+            dto.setUserDisplayName(displayName);
+            dto.setUserEmail(a.getUser().getEmail());
+            dto.setUserAvatarUrl(a.getUser().getAvatarUrl());
+        }
+        if (a.getTodoRole() != null) {
+            dto.setTodoRoleId(a.getTodoRole().getId());
+            dto.setTodoRoleName(a.getTodoRole().getName());
+        }
+        dto.setPrimary(a.isPrimary());
+        dto.setCreatedAt(a.getCreatedAt());
+        return dto;
+    }
+
     private TodoDto mapTodoToDto(Todo todo) {
         if (todo == null) return null;
         TodoDto dto = new TodoDto();
@@ -86,9 +107,22 @@ public class BoardServiceImpl implements BoardService {
             dto.setTagNames(new HashSet<>());
         }
 
+        // Scheduling & effort
+        dto.setStartDateTime(todo.getStartDateTime());
+        dto.setEndDateTime(todo.getEndDateTime());
+        dto.setEstimatedTime(todo.getEstimatedTime());
+        dto.setRemainingTime(todo.getRemainingTime());
+        dto.setStoryPoints(todo.getStoryPoints());
+
+        // Assignments (loaded via OneToMany)
+        if (todo.getAssignments() != null) {
+            dto.setAssignments(todo.getAssignments().stream()
+                    .map(this::mapAssignmentToDto)
+                    .collect(Collectors.toList()));
+        }
+
         dto.setCreatedDate(todo.getCreatedDate());
         dto.setModifiedDate(todo.getModifiedDate());
-        dto.setDueDate(todo.getDueDate());
         return dto;
     }
 

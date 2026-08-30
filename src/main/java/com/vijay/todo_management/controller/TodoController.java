@@ -101,4 +101,46 @@ public class TodoController {
         UUID userId = CurrentUserProvider.getCurrentUserId();
         return ResponseEntity.ok(todoService.removeSprintAssignment(workspaceSlug, projectSlug, sprintId, todoId, userId));
     }
+
+    // ── Assignment management ────────────────────────────────────────────────
+
+    /**
+     * Adds a user+role assignment to a todo.
+     * If this is the first assignment, isPrimary is forced to true regardless of request.
+     * If isPrimary=true is requested, the previous primary (if any) is unset in the same transaction.
+     */
+    @PostMapping("/todos/{todoId}/assignments")
+    public ResponseEntity<com.vijay.todo_management.dto.TodoAssignmentDto> addAssignment(
+            @PathVariable String workspaceSlug,
+            @PathVariable String projectSlug,
+            @PathVariable UUID todoId,
+            @jakarta.validation.Valid @RequestBody com.vijay.todo_management.dto.TodoAssignmentRequest request) {
+        UUID userId = CurrentUserProvider.getCurrentUserId();
+        return new ResponseEntity<>(
+                todoService.addAssignment(workspaceSlug, projectSlug, todoId, request, userId),
+                org.springframework.http.HttpStatus.CREATED);
+    }
+
+    @DeleteMapping("/todos/{todoId}/assignments/{assignmentId}")
+    public ResponseEntity<Void> removeAssignment(
+            @PathVariable String workspaceSlug,
+            @PathVariable String projectSlug,
+            @PathVariable UUID todoId,
+            @PathVariable UUID assignmentId) {
+        UUID userId = CurrentUserProvider.getCurrentUserId();
+        todoService.removeAssignment(workspaceSlug, projectSlug, todoId, assignmentId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Sets the specified assignment as primary; unsets the previous primary in the same transaction. */
+    @PatchMapping("/todos/{todoId}/assignments/{assignmentId}/primary")
+    public ResponseEntity<com.vijay.todo_management.dto.TodoAssignmentDto> setPrimaryAssignment(
+            @PathVariable String workspaceSlug,
+            @PathVariable String projectSlug,
+            @PathVariable UUID todoId,
+            @PathVariable UUID assignmentId) {
+        UUID userId = CurrentUserProvider.getCurrentUserId();
+        return ResponseEntity.ok(todoService.setPrimaryAssignment(workspaceSlug, projectSlug, todoId, assignmentId, userId));
+    }
 }
+

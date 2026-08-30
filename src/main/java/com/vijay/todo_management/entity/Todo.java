@@ -8,8 +8,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.UuidGenerator;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -69,14 +72,42 @@ public class Todo {
     )
     private Set<Tags> tags = new HashSet<>();
 
+    // ── Scheduling ──────────────────────────────────────────────────────────
+    @Column(name = "start_date_time")
+    private LocalDateTime startDateTime;
+
+    /** Replaces the legacy due_date field. Validated: must not be before startDateTime. */
+    @Column(name = "end_date_time")
+    private LocalDateTime endDateTime;
+
+    /** Legacy column retained in DB — application no longer writes to this field. */
+    @Column(name = "due_date")
+    @Deprecated
+    private LocalDateTime dueDate;
+
+    // ── Effort / Planning ────────────────────────────────────────────────────
+    /** Decimal hours (e.g. 4.50 = 4h 30m). */
+    @Column(name = "estimated_time", precision = 8, scale = 2)
+    private BigDecimal estimatedTime;
+
+    /** Decimal hours remaining. Typically decremented as work progresses. */
+    @Column(name = "remaining_time", precision = 8, scale = 2)
+    private BigDecimal remainingTime;
+
+    /** Story points (integer; scale defined by the team — e.g. Fibonacci). */
+    @Column(name = "story_points")
+    private Integer storyPoints;
+
+    // ── Assignments ──────────────────────────────────────────────────────────
+    @OneToMany(mappedBy = "todo", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TodoAssignment> assignments = new ArrayList<>();
+
+    // ── Audit ────────────────────────────────────────────────────────────────
     @Column(name = "created_date", nullable = false, updatable = false)
     private LocalDateTime createdDate;
 
     @Column(name = "modified_date", nullable = false)
     private LocalDateTime modifiedDate;
-
-    @Column(name = "due_date")
-    private LocalDateTime dueDate;
 
     @PrePersist
     protected void onCreate() {
