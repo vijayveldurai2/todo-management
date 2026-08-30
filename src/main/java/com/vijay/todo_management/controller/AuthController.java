@@ -49,6 +49,14 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request, ip, device));
     }
 
+    /** Validates the stored token and returns the current user's profile.
+     *  Called by the frontend on app startup to rehydrate session state. */
+    @GetMapping("/me")
+    public ResponseEntity<com.vijay.todo_management.dto.UserDto> me() {
+        UserPrincipal principal = CurrentUserProvider.requireCurrentUserPrincipal();
+        return ResponseEntity.ok(authService.me(principal.getId()));
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout() {
         UserPrincipal principal = CurrentUserProvider.requireCurrentUserPrincipal();
