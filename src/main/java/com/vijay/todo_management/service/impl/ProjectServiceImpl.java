@@ -2,6 +2,7 @@ package com.vijay.todo_management.service.impl;
 
 import com.vijay.todo_management.dto.ProjectDto;
 import com.vijay.todo_management.entity.*;
+import com.vijay.todo_management.enums.StatusCategory;
 import com.vijay.todo_management.repository.*;
 import com.vijay.todo_management.service.ProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,9 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Autowired
     private ProjectMemberRepository projectMemberRepository;
+
+    @Autowired
+    private StatusRepository statusRepository;
 
     private ProjectDto mapToDto(Project project) {
         ProjectDto dto = new ProjectDto();
@@ -130,6 +134,28 @@ public class ProjectServiceImpl implements ProjectService {
         projectMember.setUser(creator);
         projectMember.setProjectRole(adminRole);
         projectMemberRepository.save(projectMember);
+
+        // Seed 3 default project statuses
+        Status todoStatus = new Status();
+        todoStatus.setProject(savedProject);
+        todoStatus.setName("To Do");
+        todoStatus.setCategory(StatusCategory.NOT_STARTED);
+        todoStatus.setPosition(0);
+        statusRepository.save(todoStatus);
+
+        Status inProgressStatus = new Status();
+        inProgressStatus.setProject(savedProject);
+        inProgressStatus.setName("In Progress");
+        inProgressStatus.setCategory(StatusCategory.IN_PROGRESS);
+        inProgressStatus.setPosition(1);
+        statusRepository.save(inProgressStatus);
+
+        Status doneStatus = new Status();
+        doneStatus.setProject(savedProject);
+        doneStatus.setName("Done");
+        doneStatus.setCategory(StatusCategory.DONE);
+        doneStatus.setPosition(2);
+        statusRepository.save(doneStatus);
 
         return mapToDto(savedProject);
     }
