@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.vijay.todo_management.security.CurrentUserProvider;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -19,18 +21,15 @@ public class WorkspaceController {
     @Autowired
     private WorkspaceService workspaceService;
 
-    // TODO: userId is a temporary stand-in for the authenticated principal.
-    // Replace with SecurityContextHolder once Spring Security is wired in.
-
     @PostMapping
-    public ResponseEntity<WorkspaceDto> createWorkspace(
-            @RequestBody WorkspaceDto dto,
-            @RequestParam UUID creatorId) {
+    public ResponseEntity<WorkspaceDto> createWorkspace(@RequestBody WorkspaceDto dto) {
+        UUID creatorId = CurrentUserProvider.getCurrentUserId();
         return new ResponseEntity<>(workspaceService.createWorkspace(dto, creatorId), HttpStatus.CREATED);
     }
 
     @GetMapping
-    public ResponseEntity<List<WorkspaceDto>> getWorkspacesForCurrentUser(@RequestParam UUID userId) {
+    public ResponseEntity<List<WorkspaceDto>> getWorkspacesForCurrentUser() {
+        UUID userId = CurrentUserProvider.getCurrentUserId();
         return ResponseEntity.ok(workspaceService.getWorkspacesForUser(userId));
     }
 

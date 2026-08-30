@@ -1,6 +1,7 @@
 package com.vijay.todo_management.controller;
 
 import com.vijay.todo_management.dto.ProjectDto;
+import com.vijay.todo_management.security.CurrentUserProvider;
 import com.vijay.todo_management.service.ProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -20,23 +21,23 @@ public class ProjectController {
     @PostMapping
     public ResponseEntity<ProjectDto> createProject(
             @PathVariable String workspaceSlug,
-            @RequestBody ProjectDto dto,
-            @RequestParam UUID userId) {
+            @RequestBody ProjectDto dto) {
+        UUID userId = CurrentUserProvider.getCurrentUserId();
         return new ResponseEntity<>(projectService.createProject(workspaceSlug, dto, userId), HttpStatus.CREATED);
     }
 
     @GetMapping
     public ResponseEntity<List<ProjectDto>> getProjects(
-            @PathVariable String workspaceSlug,
-            @RequestParam UUID userId) {
+            @PathVariable String workspaceSlug) {
+        UUID userId = CurrentUserProvider.getCurrentUserId();
         return ResponseEntity.ok(projectService.getProjectsByWorkspace(workspaceSlug, userId));
     }
 
     @GetMapping("/{projectSlug}")
     public ResponseEntity<ProjectDto> getProject(
             @PathVariable String workspaceSlug,
-            @PathVariable String projectSlug,
-            @RequestParam UUID userId) {
+            @PathVariable String projectSlug) {
+        UUID userId = CurrentUserProvider.getCurrentUserId();
         return ResponseEntity.ok(projectService.getProjectBySlug(workspaceSlug, projectSlug, userId));
     }
 
@@ -44,16 +45,16 @@ public class ProjectController {
     public ResponseEntity<ProjectDto> updateProject(
             @PathVariable String workspaceSlug,
             @PathVariable String projectSlug,
-            @RequestBody ProjectDto dto,
-            @RequestParam UUID userId) {
+            @RequestBody ProjectDto dto) {
+        UUID userId = CurrentUserProvider.getCurrentUserId();
         return ResponseEntity.ok(projectService.updateProject(workspaceSlug, projectSlug, dto, userId));
     }
 
     @DeleteMapping("/{projectSlug}")
     public ResponseEntity<Void> archiveProject(
             @PathVariable String workspaceSlug,
-            @PathVariable String projectSlug,
-            @RequestParam UUID userId) {
+            @PathVariable String projectSlug) {
+        UUID userId = CurrentUserProvider.getCurrentUserId();
         projectService.archiveProject(workspaceSlug, projectSlug, userId);
         return ResponseEntity.noContent().build();
     }
