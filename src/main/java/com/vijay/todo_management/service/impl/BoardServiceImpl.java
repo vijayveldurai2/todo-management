@@ -37,16 +37,58 @@ public class BoardServiceImpl implements BoardService {
     @Autowired
     private ProjectMemberRepository projectMemberRepository;
 
+    @Autowired
+    private TodoRepository todoRepository;
+
     private StatusDto mapStatusToDto(Status status) {
         if (status == null) return null;
         StatusDto dto = new StatusDto();
         dto.setId(status.getId());
-        dto.setProjectId(status.getProject().getId());
+        dto.setProjectId(status.getProject() != null ? status.getProject().getId() : null);
         dto.setName(status.getName());
         dto.setCategory(status.getCategory());
         dto.setPosition(status.getPosition());
         dto.setCreatedAt(status.getCreatedAt());
         dto.setUpdatedAt(status.getUpdatedAt());
+        return dto;
+    }
+
+    private TodoDto mapTodoToDto(Todo todo) {
+        if (todo == null) return null;
+        TodoDto dto = new TodoDto();
+        dto.setId(todo.getId());
+        dto.setProjectId(todo.getProject() != null ? todo.getProject().getId() : null);
+        dto.setDisplayId(todo.getDisplayId());
+        dto.setTitle(todo.getTitle());
+        dto.setDescription(todo.getDescription());
+        dto.setPriority(todo.getPriority());
+
+        if (todo.getStatus() != null) {
+            dto.setStatusId(todo.getStatus().getId());
+            dto.setStatus(mapStatusToDto(todo.getStatus()));
+            dto.setIsDone(todo.getStatus().getCategory() == com.vijay.todo_management.enums.StatusCategory.DONE);
+        } else {
+            dto.setIsDone(false);
+        }
+
+        if (todo.getSprint() != null) {
+            dto.setSprintId(todo.getSprint().getId());
+        }
+
+        dto.setPosition(todo.getPosition());
+
+        if (todo.getTags() != null) {
+            Set<String> tagNames = todo.getTags().stream()
+                    .map(Tags::getName)
+                    .collect(Collectors.toSet());
+            dto.setTagNames(tagNames);
+        } else {
+            dto.setTagNames(new HashSet<>());
+        }
+
+        dto.setCreatedDate(todo.getCreatedDate());
+        dto.setModifiedDate(todo.getModifiedDate());
+        dto.setDueDate(todo.getDueDate());
         return dto;
     }
 
@@ -93,7 +135,37 @@ public class BoardServiceImpl implements BoardService {
 
         if (includeColumns) {
             List<BoardColumn> columns = boardColumnRepository.findByBoard_IdOrderByPositionAsc(board.getId());
-            dto.setColumns(columns.stream().map(this::mapColumnToDto).collect(Collectors.toList()));
+            
+            // Fetch todos based on board type:
+            // Sprint board: filtered by sprint_id
+            // Kanban board: all todos in project
+            List<Todo> boardTodos;
+            if (board instanceof SprintBoard sprintBoard) {
+                boardTodos = todoRepository.findByProject_IdAndSprint_Id(board.getProject().getId(), sprintBoard.getId());
+            } else {
+                boardTodos = todoRepository.findByProject_Id(board.getProject().getId());
+            }
+
+            List<BoardColumnDto> columnDtos = columns.stream().map(column -> {
+                BoardColumnDto columnDto = mapColumnToDto(column);
+                
+                Set<UUID> columnStatusIds = new HashSet<>();
+                if (column.getPrimaryStatus() != null) {
+                    columnStatusIds.add(column.getPrimaryStatus().getId());
+                }
+                if (column.getAdditionalStatuses() != null) {
+                    column.getAdditionalStatuses().forEach(s -> columnStatusIds.add(s.getId()));
+                }
+
+                List<TodoDto> columnTodos = boardTodos.stream()
+                        .filter(t -> t.getStatus() != null && columnStatusIds.contains(t.getStatus().getId()))
+                        .map(this::mapTodoToDto)
+                        .collect(Collectors.toList());
+                columnDto.setTodos(columnTodos);
+                return columnDto;
+            }).collect(Collectors.toList());
+
+            dto.setColumns(columnDtos);
         }
 
         return dto;

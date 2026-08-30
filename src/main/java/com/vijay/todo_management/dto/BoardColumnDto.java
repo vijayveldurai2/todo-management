@@ -22,6 +22,7 @@ public class BoardColumnDto {
     private UUID primaryStatusId;
     private StatusDto primaryStatus;
     private List<StatusDto> additionalStatuses = new ArrayList<>();
+    private List<TodoDto> todos = new ArrayList<>();
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

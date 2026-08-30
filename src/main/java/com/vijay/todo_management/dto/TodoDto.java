@@ -21,14 +21,16 @@ public class TodoDto {
     private String title;
     private String description;
     private Priority priority;
-    private Boolean completed;
-    private UUID boardId;       // nullable
-    private UUID columnId;
+    private UUID statusId;
+    private StatusDto status;
+    private UUID sprintId;      // nullable — absence means backlog
     private int position;
     private Set<String> tagNames;
+
+    // Derived completion state (true only when status.category == DONE)
+    private Boolean isDone;
 
     private LocalDateTime createdDate;
     private LocalDateTime modifiedDate;
     private LocalDateTime dueDate;
-    private LocalDateTime completedDate;
 }
