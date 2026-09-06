@@ -8,6 +8,8 @@ import com.vijay.todo_management.entity.WorkspaceMember;
 import com.vijay.todo_management.repository.UserRepository;
 import com.vijay.todo_management.repository.WorkspaceMemberRepository;
 import com.vijay.todo_management.repository.WorkspaceRepository;
+import com.vijay.todo_management.exception.ResourceConflictException;
+import com.vijay.todo_management.exception.ResourceNotFoundException;
 import com.vijay.todo_management.service.WorkspaceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -82,7 +84,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Transactional
     public WorkspaceDto createWorkspace(WorkspaceDto dto, UUID creatorId) {
         User creator = userRepository.findById(creatorId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + creatorId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + creatorId));
 
         Workspace workspace = new Workspace();
         workspace.setName(dto.getName());
@@ -115,14 +117,14 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     public WorkspaceDto getWorkspaceById(UUID workspaceId) {
         Workspace workspace = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new RuntimeException("Workspace not found with id: " + workspaceId));
+                .orElseThrow(() -> new ResourceNotFoundException("Workspace not found with id: " + workspaceId));
         return mapToDto(workspace);
     }
 
     @Override
     public WorkspaceDto getWorkspaceBySlug(String slug) {
         Workspace workspace = workspaceRepository.findBySlug(slug)
-                .orElseThrow(() -> new RuntimeException("Workspace not found with slug: " + slug));
+                .orElseThrow(() -> new ResourceNotFoundException("Workspace not found with slug: " + slug));
         return mapToDto(workspace);
     }
 
@@ -130,7 +132,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Transactional
     public WorkspaceDto updateWorkspace(UUID workspaceId, WorkspaceDto dto) {
         Workspace existing = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new RuntimeException("Workspace not found with id: " + workspaceId));
+                .orElseThrow(() -> new ResourceNotFoundException("Workspace not found with id: " + workspaceId));
         existing.setName(dto.getName());
         existing.setDescription(dto.getDescription());
         // slug is intentionally NOT updated here — slugs are immutable once set,
@@ -142,7 +144,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Transactional
     public void deleteWorkspace(UUID workspaceId) {
         Workspace existing = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new RuntimeException("Workspace not found with id: " + workspaceId));
+                .orElseThrow(() -> new ResourceNotFoundException("Workspace not found with id: " + workspaceId));
         // TODO: once auth is wired, only SUPER_ADMIN should be permitted to call this.
         workspaceRepository.delete(existing);
     }
@@ -162,12 +164,12 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Transactional
     public WorkspaceMemberDto addMember(UUID workspaceId, UUID userId) {
         Workspace workspace = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new RuntimeException("Workspace not found with id: " + workspaceId));
+                .orElseThrow(() -> new ResourceNotFoundException("Workspace not found with id: " + workspaceId));
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
         if (workspaceMemberRepository.existsByWorkspace_IdAndUser_Id(workspaceId, userId)) {
-            throw new RuntimeException("User is already a member of this workspace");
+            throw new ResourceConflictException("User is already a member of this workspace");
         }
 
         WorkspaceMember member = new WorkspaceMember();
@@ -183,7 +185,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Transactional
     public WorkspaceMemberDto changeMemberRole(UUID workspaceId, UUID userId, String role) {
         WorkspaceMember member = workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId)
-                .orElseThrow(() -> new RuntimeException("Membership not found for user " + userId + " in workspace " + workspaceId));
+                .orElseThrow(() -> new ResourceNotFoundException("Membership not found for user " + userId + " in workspace " + workspaceId));
 
         WorkspaceMember.Role newRole = WorkspaceMember.Role.valueOf(role.toUpperCase());
 
@@ -197,7 +199,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Transactional
     public void removeMember(UUID workspaceId, UUID userId) {
         WorkspaceMember member = workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspaceId, userId)
-                .orElseThrow(() -> new RuntimeException("Membership not found for user " + userId + " in workspace " + workspaceId));
+                .orElseThrow(() -> new ResourceNotFoundException("Membership not found for user " + userId + " in workspace " + workspaceId));
         // TODO: once auth is wired, prevent removing the last remaining SUPER_ADMIN.
         workspaceMemberRepository.delete(member);
     }

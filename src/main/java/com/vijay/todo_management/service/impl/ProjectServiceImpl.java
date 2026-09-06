@@ -3,6 +3,8 @@ package com.vijay.todo_management.service.impl;
 import com.vijay.todo_management.dto.ProjectDto;
 import com.vijay.todo_management.entity.*;
 import com.vijay.todo_management.enums.StatusCategory;
+import com.vijay.todo_management.exception.ForbiddenException;
+import com.vijay.todo_management.exception.ResourceNotFoundException;
 import com.vijay.todo_management.repository.*;
 import com.vijay.todo_management.service.ProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,35 +45,38 @@ public class ProjectServiceImpl implements ProjectService {
         dto.setWorkspaceId(project.getWorkspace().getId());
         dto.setName(project.getName());
         dto.setSlug(project.getSlug());
-        dto.setDescription(project.getDescription());
         dto.setPrefixCode(project.getPrefixCode());
+        dto.setDescription(project.getDescription());
         dto.setStatus(project.getStatus().name());
-        dto.setCreatedBy(project.getCreatedBy().getId());
         dto.setCreatedAt(project.getCreatedAt());
         dto.setUpdatedAt(project.getUpdatedAt());
         return dto;
     }
 
     private String generateUniqueSlug(UUID workspaceId, String name) {
-        String base = name.trim().toLowerCase()
-                .replaceAll("[^a-z0-9]+", "-")
-                .replaceAll("^-+|-+$", "");
-        if (base.isEmpty()) {
-            base = "project";
+        String baseSlug = name.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
+        if (baseSlug.isEmpty()) {
+            baseSlug = "project";
         }
-        String slug = base;
-        int suffix = 2;
+        String slug = baseSlug;
+        int counter = 1;
         while (projectRepository.existsByWorkspace_IdAndSlug(workspaceId, slug)) {
-            slug = base + "-" + suffix;
-            suffix++;
+            slug = baseSlug + "-" + counter++;
         }
         return slug;
     }
 
     private String generatePrefixCode(String name) {
-        String code = name.trim().toUpperCase().replaceAll("[^A-Z]", "");
-        if (code.length() > 3) {
-            code = code.substring(0, 3);
+        String[] words = name.trim().split("\\s+");
+        StringBuilder sb = new StringBuilder();
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                sb.append(Character.toUpperCase(word.charAt(0)));
+            }
+        }
+        String code = sb.toString();
+        if (code.length() > 5) {
+            code = code.substring(0, 5);
         } else if (code.length() < 2) {
             code = (code + "XX").substring(0, 2);
         }
@@ -80,11 +85,11 @@ public class ProjectServiceImpl implements ProjectService {
 
     private void validateWorkspaceAdmin(Workspace workspace, UUID userId) {
         WorkspaceMember member = workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspace.getId(), userId)
-                .orElseThrow(() -> new RuntimeException("User is not a member of this workspace"));
+                .orElseThrow(() -> new ForbiddenException("User is not a member of this workspace"));
         
         // Checking for SUPER_ADMIN. If ADMIN role is added later, check it here too.
         if (member.getRole() != WorkspaceMember.Role.SUPER_ADMIN) {
-            throw new RuntimeException("Caller must be a workspace ADMIN or SUPER_ADMIN");
+            throw new ForbiddenException("Caller must be a workspace ADMIN or SUPER_ADMIN");
         }
     }
 
@@ -92,12 +97,12 @@ public class ProjectServiceImpl implements ProjectService {
     @Transactional
     public ProjectDto createProject(String workspaceSlug, ProjectDto dto, UUID creatorId) {
         Workspace workspace = workspaceRepository.findBySlug(workspaceSlug)
-                .orElseThrow(() -> new RuntimeException("Workspace not found: " + workspaceSlug));
+                .orElseThrow(() -> new ResourceNotFoundException("Workspace not found: " + workspaceSlug));
                 
         validateWorkspaceAdmin(workspace, creatorId);
 
         User creator = userRepository.findById(creatorId)
-                .orElseThrow(() -> new RuntimeException("User not found: " + creatorId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + creatorId));
 
         Project project = new Project();
         project.setWorkspace(workspace);
@@ -163,7 +168,7 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public List<ProjectDto> getProjectsByWorkspace(String workspaceSlug, UUID userId) {
         Workspace workspace = workspaceRepository.findBySlug(workspaceSlug)
-                .orElseThrow(() -> new RuntimeException("Workspace not found: " + workspaceSlug));
+                .orElseThrow(() -> new ResourceNotFoundException("Workspace not found: " + workspaceSlug));
                 
         boolean isSuperAdmin = workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspace.getId(), userId)
                 .map(wm -> wm.getRole() == WorkspaceMember.Role.SUPER_ADMIN)
@@ -185,14 +190,14 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public ProjectDto getProjectBySlug(String workspaceSlug, String projectSlug, UUID userId) {
         Project project = projectRepository.findByWorkspace_SlugAndSlug(workspaceSlug, projectSlug)
-                .orElseThrow(() -> new RuntimeException("Project not found: " + projectSlug));
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectSlug));
                 
         boolean isSuperAdmin = workspaceMemberRepository.findByWorkspace_IdAndUser_Id(project.getWorkspace().getId(), userId)
                 .map(wm -> wm.getRole() == WorkspaceMember.Role.SUPER_ADMIN)
                 .orElse(false);
                 
         if (!isSuperAdmin && !projectMemberRepository.existsByProject_IdAndUser_Id(project.getId(), userId)) {
-            throw new RuntimeException("Access denied");
+            throw new ForbiddenException("Access denied: caller is not a member of this project or workspace");
         }
         
         return mapToDto(project);
@@ -202,7 +207,7 @@ public class ProjectServiceImpl implements ProjectService {
     @Transactional
     public ProjectDto updateProject(String workspaceSlug, String projectSlug, ProjectDto dto, UUID userId) {
         Project project = projectRepository.findByWorkspace_SlugAndSlug(workspaceSlug, projectSlug)
-                .orElseThrow(() -> new RuntimeException("Project not found: " + projectSlug));
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectSlug));
                 
         boolean isSuperAdmin = workspaceMemberRepository.findByWorkspace_IdAndUser_Id(project.getWorkspace().getId(), userId)
                 .map(wm -> wm.getRole() == WorkspaceMember.Role.SUPER_ADMIN)
@@ -213,7 +218,7 @@ public class ProjectServiceImpl implements ProjectService {
                 .orElse(false);
                 
         if (!isSuperAdmin && !isProjectAdmin) {
-             throw new RuntimeException("Caller must be a project Admin or workspace SUPER_ADMIN");
+             throw new ForbiddenException("Caller must be a project Admin or workspace SUPER_ADMIN");
         }
         
         project.setName(dto.getName());
@@ -229,7 +234,7 @@ public class ProjectServiceImpl implements ProjectService {
     @Transactional
     public void archiveProject(String workspaceSlug, String projectSlug, UUID userId) {
         Project project = projectRepository.findByWorkspace_SlugAndSlug(workspaceSlug, projectSlug)
-                .orElseThrow(() -> new RuntimeException("Project not found: " + projectSlug));
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectSlug));
         
         boolean isSuperAdmin = workspaceMemberRepository.findByWorkspace_IdAndUser_Id(project.getWorkspace().getId(), userId)
                 .map(wm -> wm.getRole() == WorkspaceMember.Role.SUPER_ADMIN)
@@ -240,7 +245,7 @@ public class ProjectServiceImpl implements ProjectService {
                 .orElse(false);
                 
         if (!isSuperAdmin && !isProjectAdmin) {
-             throw new RuntimeException("Caller must be a project Admin or workspace SUPER_ADMIN");
+             throw new ForbiddenException("Caller must be a project Admin or workspace SUPER_ADMIN");
         }
         
         project.setStatus(Project.Status.ARCHIVED);
