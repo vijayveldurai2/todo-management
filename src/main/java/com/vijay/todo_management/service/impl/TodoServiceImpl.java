@@ -8,6 +8,7 @@ import com.vijay.todo_management.exception.BadRequestException;
 import com.vijay.todo_management.exception.ForbiddenException;
 import com.vijay.todo_management.exception.ResourceConflictException;
 import com.vijay.todo_management.exception.ResourceNotFoundException;
+import com.vijay.todo_management.mapper.TodoMapper;
 import com.vijay.todo_management.repository.*;
 import com.vijay.todo_management.service.TodoService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,8 @@ public class TodoServiceImpl implements TodoService {
     @Autowired private TodoAssignmentRepository todoAssignmentRepository;
     @Autowired private TodoRoleRepository todoRoleRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private TodoMapper todoMapper;
+    @Autowired private ChecklistItemRepository checklistItemRepository;
 
     // ── Authorization ────────────────────────────────────────────────────────
 
@@ -62,87 +65,18 @@ public class TodoServiceImpl implements TodoService {
 
     // ── Mapping ──────────────────────────────────────────────────────────────
 
-    private StatusDto mapStatusToDto(Status status) {
-        if (status == null) return null;
-        StatusDto dto = new StatusDto();
-        dto.setId(status.getId());
-        dto.setProjectId(status.getProject() != null ? status.getProject().getId() : null);
-        dto.setName(status.getName());
-        dto.setCategory(status.getCategory());
-        dto.setPosition(status.getPosition());
-        dto.setCreatedAt(status.getCreatedAt());
-        dto.setUpdatedAt(status.getUpdatedAt());
-        return dto;
-    }
-
-    private TodoAssignmentDto mapAssignmentToDto(TodoAssignment a) {
-        TodoAssignmentDto dto = new TodoAssignmentDto();
-        dto.setId(a.getId());
-        dto.setTodoId(a.getTodo() != null ? a.getTodo().getId() : null);
-        if (a.getUser() != null) {
-            dto.setUserId(a.getUser().getId());
-            String displayName = a.getUser().getName() != null && !a.getUser().getName().isBlank()
-                    ? a.getUser().getName() : a.getUser().getUsername();
-            dto.setUserDisplayName(displayName);
-            dto.setUserEmail(a.getUser().getEmail());
-            dto.setUserAvatarUrl(a.getUser().getAvatarUrl());
-        }
-        if (a.getTodoRole() != null) {
-            dto.setTodoRoleId(a.getTodoRole().getId());
-            dto.setTodoRoleName(a.getTodoRole().getName());
-        }
-        dto.setPrimary(a.isPrimary());
-        dto.setCreatedAt(a.getCreatedAt());
-        return dto;
-    }
-
     private TodoDto mapToDto(Todo todo) {
         if (todo == null) return null;
-        TodoDto dto = new TodoDto();
-        dto.setId(todo.getId());
-        dto.setProjectId(todo.getProject() != null ? todo.getProject().getId() : null);
-        dto.setDisplayId(todo.getDisplayId());
-        dto.setTitle(todo.getTitle());
-        dto.setDescription(todo.getDescription());
-        dto.setPriority(todo.getPriority());
+        ChecklistStatsProjection stats = checklistItemRepository.getStatsByTodoId(todo.getId()).orElse(null);
+        return todoMapper.mapToDto(todo, stats);
+    }
 
-        if (todo.getStatus() != null) {
-            dto.setStatusId(todo.getStatus().getId());
-            dto.setStatus(mapStatusToDto(todo.getStatus()));
-            dto.setIsDone(todo.getStatus().getCategory() == StatusCategory.DONE);
-        } else {
-            dto.setIsDone(false);
-        }
-
-        if (todo.getSprint() != null) {
-            dto.setSprintId(todo.getSprint().getId());
-        }
-
-        dto.setPosition(todo.getPosition());
-
-        if (todo.getTags() != null) {
-            dto.setTagNames(todo.getTags().stream().map(Tags::getName).collect(Collectors.toSet()));
-        } else {
-            dto.setTagNames(new HashSet<>());
-        }
-
-        // Scheduling & effort
-        dto.setStartDateTime(todo.getStartDateTime());
-        dto.setEndDateTime(todo.getEndDateTime());
-        dto.setEstimatedTime(todo.getEstimatedTime());
-        dto.setRemainingTime(todo.getRemainingTime());
-        dto.setStoryPoints(todo.getStoryPoints());
-
-        // Assignments (loaded via OneToMany)
-        if (todo.getAssignments() != null) {
-            dto.setAssignments(todo.getAssignments().stream()
-                    .map(this::mapAssignmentToDto)
-                    .collect(Collectors.toList()));
-        }
-
-        dto.setCreatedDate(todo.getCreatedDate());
-        dto.setModifiedDate(todo.getModifiedDate());
-        return dto;
+    private List<TodoDto> mapToDtoList(List<Todo> todos) {
+        if (todos == null || todos.isEmpty()) return Collections.emptyList();
+        Set<UUID> todoIds = todos.stream().map(Todo::getId).collect(Collectors.toSet());
+        Map<UUID, ChecklistStatsProjection> statsMap = checklistItemRepository.getStatsByTodoIds(todoIds).stream()
+                .collect(Collectors.toMap(ChecklistStatsProjection::getTodoId, s -> s));
+        return todoMapper.mapToDtoList(todos, statsMap);
     }
 
     private Tags findOrCreateTag(String name) {
@@ -239,7 +173,7 @@ public class TodoServiceImpl implements TodoService {
             todos = todoRepository.findByProject_Id(project.getId());
         }
 
-        return todos.stream().map(this::mapToDto).collect(Collectors.toList());
+        return mapToDtoList(todos);
     }
 
     @Override
@@ -394,7 +328,7 @@ public class TodoServiceImpl implements TodoService {
         assignment.setPrimary(setPrimary);
 
         try {
-            return mapAssignmentToDto(todoAssignmentRepository.save(assignment));
+            return todoMapper.mapAssignmentToDto(todoAssignmentRepository.save(assignment));
         } catch (DataIntegrityViolationException e) {
             throw new ResourceConflictException(
                     "User " + request.getUserId() + " already has role '"
@@ -437,6 +371,6 @@ public class TodoServiceImpl implements TodoService {
                 });
 
         target.setPrimary(true);
-        return mapAssignmentToDto(todoAssignmentRepository.save(target));
+        return todoMapper.mapAssignmentToDto(todoAssignmentRepository.save(target));
     }
 }

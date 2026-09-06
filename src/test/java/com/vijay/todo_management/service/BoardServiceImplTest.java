@@ -7,6 +7,7 @@ import com.vijay.todo_management.enums.SprintStatus;
 import com.vijay.todo_management.enums.StatusCategory;
 import com.vijay.todo_management.exception.BadRequestException;
 import com.vijay.todo_management.exception.ForbiddenException;
+import com.vijay.todo_management.mapper.TodoMapper;
 import com.vijay.todo_management.repository.*;
 import com.vijay.todo_management.service.impl.BoardServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
@@ -47,6 +49,12 @@ class BoardServiceImplTest {
 
     @Mock
     private TodoRepository todoRepository;
+
+    @Spy
+    private TodoMapper todoMapper = new TodoMapper();
+
+    @Mock
+    private ChecklistItemRepository checklistItemRepository;
 
     @InjectMocks
     private BoardServiceImpl boardService;

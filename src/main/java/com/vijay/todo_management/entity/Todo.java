@@ -102,6 +102,10 @@ public class Todo {
     @OneToMany(mappedBy = "todo", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TodoAssignment> assignments = new ArrayList<>();
 
+    // ── Checklist Items ──────────────────────────────────────────────────────
+    @OneToMany(mappedBy = "todo", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<ChecklistItem> checklistItems = new ArrayList<>();
+
     // ── Audit ────────────────────────────────────────────────────────────────
     @Column(name = "created_date", nullable = false, updatable = false)
     private LocalDateTime createdDate;

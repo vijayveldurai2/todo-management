@@ -7,6 +7,7 @@ import com.vijay.todo_management.enums.SprintStatus;
 import com.vijay.todo_management.exception.BadRequestException;
 import com.vijay.todo_management.exception.ForbiddenException;
 import com.vijay.todo_management.exception.ResourceNotFoundException;
+import com.vijay.todo_management.mapper.TodoMapper;
 import com.vijay.todo_management.repository.*;
 import com.vijay.todo_management.service.BoardService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,91 +41,11 @@ public class BoardServiceImpl implements BoardService {
     @Autowired
     private TodoRepository todoRepository;
 
-    private StatusDto mapStatusToDto(Status status) {
-        if (status == null) return null;
-        StatusDto dto = new StatusDto();
-        dto.setId(status.getId());
-        dto.setProjectId(status.getProject() != null ? status.getProject().getId() : null);
-        dto.setName(status.getName());
-        dto.setCategory(status.getCategory());
-        dto.setPosition(status.getPosition());
-        dto.setCreatedAt(status.getCreatedAt());
-        dto.setUpdatedAt(status.getUpdatedAt());
-        return dto;
-    }
+    @Autowired
+    private TodoMapper todoMapper;
 
-    private TodoAssignmentDto mapAssignmentToDto(TodoAssignment a) {
-        TodoAssignmentDto dto = new TodoAssignmentDto();
-        dto.setId(a.getId());
-        dto.setTodoId(a.getTodo() != null ? a.getTodo().getId() : null);
-        if (a.getUser() != null) {
-            dto.setUserId(a.getUser().getId());
-            String displayName = a.getUser().getName() != null && !a.getUser().getName().isBlank()
-                    ? a.getUser().getName() : a.getUser().getUsername();
-            dto.setUserDisplayName(displayName);
-            dto.setUserEmail(a.getUser().getEmail());
-            dto.setUserAvatarUrl(a.getUser().getAvatarUrl());
-        }
-        if (a.getTodoRole() != null) {
-            dto.setTodoRoleId(a.getTodoRole().getId());
-            dto.setTodoRoleName(a.getTodoRole().getName());
-        }
-        dto.setPrimary(a.isPrimary());
-        dto.setCreatedAt(a.getCreatedAt());
-        return dto;
-    }
-
-    private TodoDto mapTodoToDto(Todo todo) {
-        if (todo == null) return null;
-        TodoDto dto = new TodoDto();
-        dto.setId(todo.getId());
-        dto.setProjectId(todo.getProject() != null ? todo.getProject().getId() : null);
-        dto.setDisplayId(todo.getDisplayId());
-        dto.setTitle(todo.getTitle());
-        dto.setDescription(todo.getDescription());
-        dto.setPriority(todo.getPriority());
-
-        if (todo.getStatus() != null) {
-            dto.setStatusId(todo.getStatus().getId());
-            dto.setStatus(mapStatusToDto(todo.getStatus()));
-            dto.setIsDone(todo.getStatus().getCategory() == com.vijay.todo_management.enums.StatusCategory.DONE);
-        } else {
-            dto.setIsDone(false);
-        }
-
-        if (todo.getSprint() != null) {
-            dto.setSprintId(todo.getSprint().getId());
-        }
-
-        dto.setPosition(todo.getPosition());
-
-        if (todo.getTags() != null) {
-            Set<String> tagNames = todo.getTags().stream()
-                    .map(Tags::getName)
-                    .collect(Collectors.toSet());
-            dto.setTagNames(tagNames);
-        } else {
-            dto.setTagNames(new HashSet<>());
-        }
-
-        // Scheduling & effort
-        dto.setStartDateTime(todo.getStartDateTime());
-        dto.setEndDateTime(todo.getEndDateTime());
-        dto.setEstimatedTime(todo.getEstimatedTime());
-        dto.setRemainingTime(todo.getRemainingTime());
-        dto.setStoryPoints(todo.getStoryPoints());
-
-        // Assignments (loaded via OneToMany)
-        if (todo.getAssignments() != null) {
-            dto.setAssignments(todo.getAssignments().stream()
-                    .map(this::mapAssignmentToDto)
-                    .collect(Collectors.toList()));
-        }
-
-        dto.setCreatedDate(todo.getCreatedDate());
-        dto.setModifiedDate(todo.getModifiedDate());
-        return dto;
-    }
+    @Autowired
+    private ChecklistItemRepository checklistItemRepository;
 
     private BoardColumnDto mapColumnToDto(BoardColumn column) {
         BoardColumnDto dto = new BoardColumnDto();
@@ -133,12 +54,12 @@ public class BoardServiceImpl implements BoardService {
         dto.setName(column.getName());
         dto.setPosition(column.getPosition());
         dto.setPrimaryStatusId(column.getPrimaryStatus().getId());
-        dto.setPrimaryStatus(mapStatusToDto(column.getPrimaryStatus()));
+        dto.setPrimaryStatus(todoMapper.mapStatusToDto(column.getPrimaryStatus()));
 
         if (column.getAdditionalStatuses() != null) {
             dto.setAdditionalStatuses(
                     column.getAdditionalStatuses().stream()
-                            .map(this::mapStatusToDto)
+                            .map(todoMapper::mapStatusToDto)
                             .sorted(Comparator.comparingInt(StatusDto::getPosition))
                             .collect(Collectors.toList())
             );
@@ -180,6 +101,11 @@ public class BoardServiceImpl implements BoardService {
                 boardTodos = todoRepository.findByProject_Id(board.getProject().getId());
             }
 
+            Set<UUID> todoIds = boardTodos.stream().map(Todo::getId).collect(Collectors.toSet());
+            Map<UUID, ChecklistStatsProjection> statsMap = todoIds.isEmpty() ? Collections.emptyMap() :
+                    checklistItemRepository.getStatsByTodoIds(todoIds).stream()
+                            .collect(Collectors.toMap(ChecklistStatsProjection::getTodoId, s -> s));
+
             List<BoardColumnDto> columnDtos = columns.stream().map(column -> {
                 BoardColumnDto columnDto = mapColumnToDto(column);
                 
@@ -193,7 +119,7 @@ public class BoardServiceImpl implements BoardService {
 
                 List<TodoDto> columnTodos = boardTodos.stream()
                         .filter(t -> t.getStatus() != null && columnStatusIds.contains(t.getStatus().getId()))
-                        .map(this::mapTodoToDto)
+                        .map(t -> todoMapper.mapToDto(t, statsMap.get(t.getId())))
                         .collect(Collectors.toList());
                 columnDto.setTodos(columnTodos);
                 return columnDto;

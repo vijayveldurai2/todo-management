@@ -46,6 +46,12 @@ public class TodoDto {
     /** true only when status.category == DONE */
     private Boolean isDone;
 
+    // ── Checklist Statistics ─────────────────────────────────
+    private Integer checklistTotalCount;
+    private Integer checklistCompletedCount;
+    /** Nullable: null when checklistTotalCount == 0; rounded percentage (0-100) otherwise */
+    private Integer checklistProgressPercentage;
+
     // ── Audit ────────────────────────────────────────────────
     private LocalDateTime createdDate;
     private LocalDateTime modifiedDate;
