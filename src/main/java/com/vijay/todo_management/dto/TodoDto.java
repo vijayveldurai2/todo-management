@@ -1,5 +1,6 @@
 package com.vijay.todo_management.dto;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.vijay.todo_management.enums.Priority;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -22,7 +23,8 @@ public class TodoDto {
     private UUID projectId;
     private String displayId;   // e.g. "WR-546"
     private String title;
-    private String description;
+    private JsonNode descriptionJson;
+    private String descriptionPlainText;
     private Priority priority;
     private UUID statusId;
     private StatusDto status;

@@ -4,9 +4,12 @@ import com.vijay.todo_management.enums.Priority;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -46,8 +49,12 @@ public class Todo {
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false)
-    private String description;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "description_json", columnDefinition = "json")
+    private JsonNode descriptionJson;
+
+    @Column(name = "description_plain_text", columnDefinition = "LONGTEXT")
+    private String descriptionPlainText;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

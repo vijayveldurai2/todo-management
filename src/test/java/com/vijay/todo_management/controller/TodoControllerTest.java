@@ -58,7 +58,7 @@ class TodoControllerTest {
     void testCreateTodo_ReturnsCreated() {
         TodoCreateRequest req = new TodoCreateRequest();
         req.setTitle("Task Title");
-        req.setDescription("Desc");
+        req.setDescriptionPlainText("Desc");
         req.setPriority(Priority.MEDIUM);
         TodoDto dto = new TodoDto();
         dto.setId(UUID.randomUUID());
@@ -108,7 +108,7 @@ class TodoControllerTest {
         UUID todoId = UUID.randomUUID();
         TodoUpdateRequest req = new TodoUpdateRequest();
         req.setTitle("Updated Title");
-        req.setDescription("Updated Desc");
+        req.setDescriptionPlainText("Updated Desc");
         req.setPriority(Priority.HIGH);
         TodoDto dto = new TodoDto();
         dto.setId(todoId);

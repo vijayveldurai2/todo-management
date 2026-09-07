@@ -1,5 +1,6 @@
 package com.vijay.todo_management.dto;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.vijay.todo_management.enums.Priority;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -21,7 +22,9 @@ public class TodoCreateRequest {
     @NotBlank(message = "Title is required")
     private String title;
 
-    private String description;
+    private JsonNode descriptionJson;
+
+    private String descriptionPlainText;
 
     private Priority priority;  // defaults to MEDIUM if null
 

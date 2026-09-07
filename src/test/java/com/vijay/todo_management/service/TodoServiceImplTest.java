@@ -1,5 +1,7 @@
 package com.vijay.todo_management.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vijay.todo_management.dto.*;
 import com.vijay.todo_management.entity.*;
 import com.vijay.todo_management.enums.Priority;
@@ -160,7 +162,6 @@ class TodoServiceImplTest {
 
         TodoCreateRequest req = new TodoCreateRequest();
         req.setTitle("New Task");
-        req.setDescription("Task Description");
         req.setPriority(Priority.HIGH);
 
         TodoDto result = todoService.createTodo("test-ws", "test-proj", req, userId);
@@ -445,5 +446,151 @@ class TodoServiceImplTest {
 
         assertNotNull(result);
         assertEquals(statusDone.getId(), result.getStatusId());
+    }
+
+    @Test
+    void testCreateTodo_BothDescriptionNull_Succeeds() {
+        mockProjectAccess(userId);
+        when(statusRepository.findByProject_IdOrderByPositionAsc(project.getId()))
+                .thenReturn(List.of(statusTodo));
+        when(todoRepository.save(any(Todo.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        TodoCreateRequest req = new TodoCreateRequest();
+        req.setTitle("Task Null Description");
+        req.setDescriptionJson(null);
+        req.setDescriptionPlainText(null);
+
+        TodoDto result = todoService.createTodo("test-ws", "test-proj", req, userId);
+        assertNotNull(result);
+        assertNull(result.getDescriptionJson());
+        assertNull(result.getDescriptionPlainText());
+    }
+
+    @Test
+    void testCreateTodo_OnlyJsonProvided_ThrowsBadRequest() throws Exception {
+        mockProjectAccess(userId);
+        JsonNode jsonNode = new ObjectMapper().readTree("{\"type\":\"doc\"}");
+
+        TodoCreateRequest req = new TodoCreateRequest();
+        req.setTitle("Task Inconsistent");
+        req.setDescriptionJson(jsonNode);
+        req.setDescriptionPlainText(null);
+
+        BadRequestException ex = assertThrows(BadRequestException.class, () ->
+                todoService.createTodo("test-ws", "test-proj", req, userId));
+        assertEquals("descriptionJson and descriptionPlainText must either both be provided or both be null", ex.getMessage());
+    }
+
+    @Test
+    void testCreateTodo_OnlyPlainTextProvided_ThrowsBadRequest() {
+        mockProjectAccess(userId);
+
+        TodoCreateRequest req = new TodoCreateRequest();
+        req.setTitle("Task Inconsistent");
+        req.setDescriptionJson(null);
+        req.setDescriptionPlainText("Some text");
+
+        BadRequestException ex = assertThrows(BadRequestException.class, () ->
+                todoService.createTodo("test-ws", "test-proj", req, userId));
+        assertEquals("descriptionJson and descriptionPlainText must either both be provided or both be null", ex.getMessage());
+    }
+
+    @Test
+    void testCreateTodo_BothProvided_Succeeds() throws Exception {
+        mockProjectAccess(userId);
+        when(statusRepository.findByProject_IdOrderByPositionAsc(project.getId()))
+                .thenReturn(List.of(statusTodo));
+        when(todoRepository.save(any(Todo.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        JsonNode jsonNode = new ObjectMapper().readTree("{\"type\":\"doc\",\"content\":[]}");
+
+        TodoCreateRequest req = new TodoCreateRequest();
+        req.setTitle("Rich Task");
+        req.setDescriptionJson(jsonNode);
+        req.setDescriptionPlainText("Plain text extract");
+
+        TodoDto result = todoService.createTodo("test-ws", "test-proj", req, userId);
+        assertNotNull(result);
+        assertEquals(jsonNode, result.getDescriptionJson());
+        assertEquals("Plain text extract", result.getDescriptionPlainText());
+    }
+
+    @Test
+    void testUpdateTodo_OnlyTitleChanged_PreservesExistingDescription() throws Exception {
+        mockProjectAccess(userId);
+        UUID todoId = UUID.randomUUID();
+        JsonNode existingJson = new ObjectMapper().readTree("{\"type\":\"doc\",\"text\":\"original\"}");
+
+        Todo existingTodo = new Todo();
+        existingTodo.setId(todoId);
+        existingTodo.setProject(project);
+        existingTodo.setTitle("Original Title");
+        existingTodo.setDescriptionJson(existingJson);
+        existingTodo.setDescriptionPlainText("original text");
+
+        when(todoRepository.findByIdAndProject_Id(todoId, project.getId())).thenReturn(Optional.of(existingTodo));
+        when(todoRepository.save(any(Todo.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // PATCH request omitting description fields entirely (presence flags remain false)
+        TodoUpdateRequest req = new TodoUpdateRequest();
+        req.setTitle("Updated Title Only");
+        assertFalse(req.isDescriptionUpdateRequested());
+
+        TodoDto result = todoService.updateTodo("test-ws", "test-proj", todoId, req, userId);
+
+        assertNotNull(result);
+        assertEquals("Updated Title Only", result.getTitle());
+        // Verify existing description is completely preserved and untouched
+        assertEquals(existingJson, result.getDescriptionJson());
+        assertEquals("original text", result.getDescriptionPlainText());
+    }
+
+    @Test
+    void testUpdateTodo_ExplicitClear_SetsDescriptionToNull() throws Exception {
+        mockProjectAccess(userId);
+        UUID todoId = UUID.randomUUID();
+        JsonNode existingJson = new ObjectMapper().readTree("{\"type\":\"doc\"}");
+
+        Todo existingTodo = new Todo();
+        existingTodo.setId(todoId);
+        existingTodo.setProject(project);
+        existingTodo.setTitle("Title");
+        existingTodo.setDescriptionJson(existingJson);
+        existingTodo.setDescriptionPlainText("text");
+
+        when(todoRepository.findByIdAndProject_Id(todoId, project.getId())).thenReturn(Optional.of(existingTodo));
+        when(todoRepository.save(any(Todo.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // PATCH request explicitly clearing description
+        TodoUpdateRequest req = new TodoUpdateRequest();
+        req.setDescriptionJson(null);
+        req.setDescriptionPlainText(null);
+
+        assertTrue(req.isDescriptionUpdateRequested());
+
+        TodoDto result = todoService.updateTodo("test-ws", "test-proj", todoId, req, userId);
+
+        assertNotNull(result);
+        assertNull(result.getDescriptionJson());
+        assertNull(result.getDescriptionPlainText());
+    }
+
+    @Test
+    void testUpdateTodo_InconsistentUpdate_ThrowsBadRequest() throws Exception {
+        mockProjectAccess(userId);
+        UUID todoId = UUID.randomUUID();
+        Todo existingTodo = new Todo();
+        existingTodo.setId(todoId);
+        existingTodo.setProject(project);
+
+        when(todoRepository.findByIdAndProject_Id(todoId, project.getId())).thenReturn(Optional.of(existingTodo));
+
+        TodoUpdateRequest req = new TodoUpdateRequest();
+        req.setDescriptionJson(new ObjectMapper().readTree("{\"type\":\"doc\"}"));
+        // plain text omitted
+
+        BadRequestException ex = assertThrows(BadRequestException.class, () ->
+                todoService.updateTodo("test-ws", "test-proj", todoId, req, userId));
+        assertEquals("descriptionJson and descriptionPlainText must either both be provided or both be null", ex.getMessage());
     }
 }

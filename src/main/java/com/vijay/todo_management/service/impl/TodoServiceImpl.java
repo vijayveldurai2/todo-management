@@ -4,6 +4,7 @@ import com.vijay.todo_management.dto.*;
 import com.vijay.todo_management.entity.*;
 import com.vijay.todo_management.enums.Priority;
 import com.vijay.todo_management.enums.StatusCategory;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.vijay.todo_management.exception.BadRequestException;
 import com.vijay.todo_management.exception.ForbiddenException;
 import com.vijay.todo_management.exception.ResourceConflictException;
@@ -100,6 +101,7 @@ public class TodoServiceImpl implements TodoService {
         }
 
         validateDateRange(request.getStartDateTime(), request.getEndDateTime());
+        validateDescriptionConsistency(request.getDescriptionJson(), request.getDescriptionPlainText());
 
         // Atomically increment displayIdSeq
         int seq = project.getDisplayIdSeq() + 1;
@@ -139,7 +141,9 @@ public class TodoServiceImpl implements TodoService {
         todo.setProject(project);
         todo.setDisplayId(displayId);
         todo.setTitle(request.getTitle().trim());
-        todo.setDescription(request.getDescription() != null ? request.getDescription().trim() : "");
+        todo.setDescriptionJson(request.getDescriptionJson() != null && !request.getDescriptionJson().isNull()
+                ? request.getDescriptionJson() : null);
+        todo.setDescriptionPlainText(request.getDescriptionPlainText());
         todo.setPriority(request.getPriority() != null ? request.getPriority() : Priority.MEDIUM);
         todo.setStatus(status);
         todo.setSprint(sprint);
@@ -202,8 +206,22 @@ public class TodoServiceImpl implements TodoService {
         if (request.getTitle() != null && !request.getTitle().trim().isEmpty()) {
             todo.setTitle(request.getTitle().trim());
         }
-        if (request.getDescription() != null) {
-            todo.setDescription(request.getDescription().trim());
+        if (request.isDescriptionUpdateRequested()) {
+            boolean jsonIsNull = request.getDescriptionJson() == null || request.getDescriptionJson().isNull();
+            boolean plainTextIsNull = request.getDescriptionPlainText() == null;
+
+            if (jsonIsNull && plainTextIsNull) {
+                // Explicit clear
+                todo.setDescriptionJson(null);
+                todo.setDescriptionPlainText(null);
+            } else if (!jsonIsNull && !plainTextIsNull) {
+                // Explicit update
+                todo.setDescriptionJson(request.getDescriptionJson());
+                todo.setDescriptionPlainText(request.getDescriptionPlainText());
+            } else {
+                // Inconsistent update (one provided, one null/omitted)
+                throw new BadRequestException("descriptionJson and descriptionPlainText must either both be provided or both be null");
+            }
         }
         if (request.getPriority() != null) {
             todo.setPriority(request.getPriority());
@@ -372,5 +390,13 @@ public class TodoServiceImpl implements TodoService {
 
         target.setPrimary(true);
         return todoMapper.mapAssignmentToDto(todoAssignmentRepository.save(target));
+    }
+
+    private void validateDescriptionConsistency(JsonNode json, String plainText) {
+        boolean hasJson = json != null && !json.isNull();
+        boolean hasPlainText = plainText != null;
+        if (hasJson != hasPlainText) {
+            throw new BadRequestException("descriptionJson and descriptionPlainText must either both be provided or both be null");
+        }
     }
 }
