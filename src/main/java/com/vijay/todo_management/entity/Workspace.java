@@ -33,6 +33,9 @@ public class Workspace {
     @Column(length = 500)
     private String description;
 
+    @Column(name = "attachment_max_bytes")
+    private Long attachmentMaxBytes;
+
     @ManyToOne
     @JoinColumn(name = "created_by", nullable = false, updatable = false)
     private User createdBy;

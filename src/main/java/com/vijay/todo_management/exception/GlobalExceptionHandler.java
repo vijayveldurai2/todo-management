@@ -18,6 +18,19 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler({AttachmentTooLargeException.class,
+            org.springframework.web.multipart.MaxUploadSizeExceededException.class})
+    public ResponseEntity<ErrorResponse> handleAttachmentSize(Exception ex) {
+        return ResponseEntity.status(413).body(ErrorResponse.builder().status(413)
+                .error("Payload Too Large").message("File exceeds the upload limit")
+                .timestamp(LocalDateTime.now()).build());
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.support.MissingServletRequestPartException.class)
+    public ResponseEntity<ErrorResponse> handleMissingUploadPart(Exception ex) {
+        return handleBadRequestException(new BadRequestException("Required file part is missing"));
+    }
+
     // Advice also catches failures raised by the transaction interceptor at commit.
     @ExceptionHandler({org.springframework.dao.OptimisticLockingFailureException.class,
             jakarta.persistence.OptimisticLockException.class})
