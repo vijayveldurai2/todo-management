@@ -18,6 +18,14 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // Advice also catches failures raised by the transaction interceptor at commit.
+    @ExceptionHandler({org.springframework.dao.OptimisticLockingFailureException.class,
+            jakarta.persistence.OptimisticLockException.class})
+    public ResponseEntity<ErrorResponse> handleOptimisticConflict(Exception ex) {
+        return handleResourceConflictException(new ResourceConflictException(
+                "Comment was changed by another request; reload and try again"));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> fieldErrors = new LinkedHashMap<>();

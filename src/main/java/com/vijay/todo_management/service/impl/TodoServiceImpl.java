@@ -35,6 +35,7 @@ public class TodoServiceImpl implements TodoService {
     @Autowired private UserRepository userRepository;
     @Autowired private TodoMapper todoMapper;
     @Autowired private ChecklistItemRepository checklistItemRepository;
+    @Autowired private CommentRepository commentRepository;
 
     // ── Authorization ────────────────────────────────────────────────────────
 
@@ -254,8 +255,9 @@ public class TodoServiceImpl implements TodoService {
     @Transactional
     public void deleteTodo(String workspaceSlug, String projectSlug, UUID todoId, UUID userId) {
         Project project = getProjectAndValidateAccess(workspaceSlug, projectSlug, userId);
-        Todo todo = todoRepository.findByIdAndProject_Id(todoId, project.getId())
+        Todo todo = todoRepository.findForCommentWrite(todoId, project.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Todo not found with id: " + todoId));
+        commentRepository.detachParentsForTodo(todoId);
         todoRepository.delete(todo);
     }
 

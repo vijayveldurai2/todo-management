@@ -57,6 +57,9 @@ class TodoServiceImplTest {
     @Mock
     private ChecklistItemRepository checklistItemRepository;
 
+    @Mock
+    private CommentRepository commentRepository;
+
     @InjectMocks
     private TodoServiceImpl todoService;
 
@@ -140,6 +143,19 @@ class TodoServiceImplTest {
         when(projectRepository.findByWorkspace_SlugAndSlug("test-ws", "test-proj")).thenReturn(Optional.of(project));
         when(workspaceMemberRepository.findByWorkspace_IdAndUser_Id(workspace.getId(), callerId)).thenReturn(Optional.empty());
         when(projectMemberRepository.existsByProject_IdAndUser_Id(project.getId(), callerId)).thenReturn(true);
+    }
+
+    @Test
+    void deleteTodoLocksBeforeDetachingThreadAndDeleting() {
+        mockProjectAccess(userId);
+        Todo todo = new Todo();
+        todo.setId(UUID.randomUUID());
+        when(todoRepository.findForCommentWrite(todo.getId(), project.getId())).thenReturn(Optional.of(todo));
+        todoService.deleteTodo("test-ws", "test-proj", todo.getId(), userId);
+        var order = inOrder(todoRepository, commentRepository);
+        order.verify(todoRepository).findForCommentWrite(todo.getId(), project.getId());
+        order.verify(commentRepository).detachParentsForTodo(todo.getId());
+        order.verify(todoRepository).delete(todo);
     }
 
     private void mockSuperAdminAccess(UUID callerId) {

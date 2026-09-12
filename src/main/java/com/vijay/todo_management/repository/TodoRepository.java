@@ -11,6 +11,11 @@ import java.util.UUID;
 @Repository
 public interface TodoRepository extends JpaRepository<Todo, UUID> {
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select t from Todo t where t.id = :id and t.project.id = :projectId")
+    Optional<Todo> findForCommentWrite(@org.springframework.data.repository.query.Param("id") UUID id,
+            @org.springframework.data.repository.query.Param("projectId") UUID projectId);
+
     List<Todo> findByProject_Id(UUID projectId);
 
     List<Todo> findByProject_IdAndSprint_Id(UUID projectId, UUID sprintId);
