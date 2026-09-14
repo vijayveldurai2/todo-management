@@ -21,8 +21,10 @@ import java.util.UUID;
 public class TodoDto {
     private UUID id;
     private UUID projectId;
+    private UUID parentTodoId;
     private String displayId;   // e.g. "WR-546"
     private String title;
+    @tools.jackson.databind.annotation.JsonSerialize(using = TodoJsonBridge.Writer.class)
     private JsonNode descriptionJson;
     private String descriptionPlainText;
     private Priority priority;

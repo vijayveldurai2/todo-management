@@ -67,6 +67,7 @@ public class TodoMapper {
         TodoDto dto = new TodoDto();
         dto.setId(todo.getId());
         dto.setProjectId(todo.getProject() != null ? todo.getProject().getId() : null);
+        dto.setParentTodoId(todo.getParentTodo() != null ? todo.getParentTodo().getId() : null);
         dto.setDisplayId(todo.getDisplayId());
         dto.setTitle(todo.getTitle());
         dto.setDescriptionJson(todo.getDescriptionJson());

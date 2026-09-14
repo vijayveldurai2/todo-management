@@ -11,6 +11,11 @@ import java.util.List;
 import java.util.UUID;
 
 public interface TodoService {
+    TodoDto resolveTodo(String workspaceSlug, String projectSlug, String displayId, UUID userId);
+
+    List<TodoDto> getSubtasks(String workspaceSlug, String projectSlug, UUID parentId, UUID userId);
+
+    TodoDto promoteSubtask(String workspaceSlug, String projectSlug, UUID todoId, UUID userId);
 
     TodoDto createTodo(String workspaceSlug, String projectSlug, TodoCreateRequest request, UUID userId);
 

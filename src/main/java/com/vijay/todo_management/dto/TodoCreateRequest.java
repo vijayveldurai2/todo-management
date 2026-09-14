@@ -22,6 +22,7 @@ public class TodoCreateRequest {
     @NotBlank(message = "Title is required")
     private String title;
 
+    @tools.jackson.databind.annotation.JsonDeserialize(using = TodoJsonBridge.Reader.class)
     private JsonNode descriptionJson;
 
     private String descriptionPlainText;
@@ -31,6 +32,9 @@ public class TodoCreateRequest {
     private UUID statusId;      // optional — defaults to lowest position NOT_STARTED status
 
     private UUID sprintId;      // optional — null means backlog
+
+    /** Optional same-project parent. A subtask is otherwise a normal Todo. */
+    private UUID parentTodoId;
 
     private Set<String> tagNames;
 

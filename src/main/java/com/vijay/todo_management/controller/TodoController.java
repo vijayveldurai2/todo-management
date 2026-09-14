@@ -16,8 +16,29 @@ import java.util.UUID;
 @RequestMapping("/api/workspaces/{workspaceSlug}/projects/{projectSlug}")
 public class TodoController {
 
+    @GetMapping("/todos/resolve/{displayId}")
+    public ResponseEntity<TodoDto> resolveTodo(@PathVariable String workspaceSlug,
+            @PathVariable String projectSlug, @PathVariable String displayId) {
+        return ResponseEntity.ok(todoService.resolveTodo(workspaceSlug, projectSlug, displayId,
+                CurrentUserProvider.getCurrentUserId()));
+    }
+
     @Autowired
     private TodoService todoService;
+
+    @GetMapping("/todos/{todoId}/subtasks")
+    public ResponseEntity<List<TodoDto>> getSubtasks(@PathVariable String workspaceSlug,
+            @PathVariable String projectSlug, @PathVariable UUID todoId) {
+        return ResponseEntity.ok(todoService.getSubtasks(workspaceSlug, projectSlug, todoId,
+                CurrentUserProvider.getCurrentUserId()));
+    }
+
+    @DeleteMapping("/todos/{todoId}/parent")
+    public ResponseEntity<TodoDto> promoteSubtask(@PathVariable String workspaceSlug,
+            @PathVariable String projectSlug, @PathVariable UUID todoId) {
+        return ResponseEntity.ok(todoService.promoteSubtask(workspaceSlug, projectSlug, todoId,
+                CurrentUserProvider.getCurrentUserId()));
+    }
 
     @PostMapping("/todos")
     public ResponseEntity<TodoDto> createTodo(
@@ -143,4 +164,3 @@ public class TodoController {
         return ResponseEntity.ok(todoService.setPrimaryAssignment(workspaceSlug, projectSlug, todoId, assignmentId, userId));
     }
 }
-

@@ -7,9 +7,10 @@ at a time: agree on behavior, explain the design, implement, and verify.
 - File attachments: local backend implemented on codex/todo-attachments.
   Review the backend flow together; frontend UI remains pending the design discussion.
   Replaceable storage backend later; comment attachments and file versions are deferred.
+- Subtasks: backend implemented on codex/todo-subtasks; review the parent link,
+  independent task fields, promotion and deletion guard before frontend work.
 
 ## Next
-- Subtasks: independent assignee, status and due date; distinct from checklist steps.
 - Cookie/JWT TTL mismatch.
 - Username/name mapping.
 - Avatar URL population.

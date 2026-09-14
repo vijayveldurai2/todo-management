@@ -23,6 +23,26 @@ import java.util.stream.Collectors;
 @Service
 public class TodoServiceImpl implements TodoService {
 
+    @Override
+    @Transactional(readOnly = true)
+    public TodoDto resolveTodo(String workspaceSlug, String projectSlug, String displayId, UUID userId) {
+        if (!displayId.matches("^[a-z]+-\\d+$")
+                || !workspaceSlug.equals(workspaceSlug.toLowerCase(Locale.ROOT))
+                || !projectSlug.equals(projectSlug.toLowerCase(Locale.ROOT))
+                || workspaceSlug.equals("_") || projectSlug.equals("_")) {
+            throw new ResourceNotFoundException("Todo not found");
+        }
+        Project project = getProjectAndValidateAccess(workspaceSlug, projectSlug, userId);
+        // Preserve exact matching even with a case-insensitive database collation.
+        if (!workspaceSlug.equals(project.getWorkspace().getSlug()) || !projectSlug.equals(project.getSlug())) {
+            throw new ResourceNotFoundException("Todo not found");
+        }
+        Todo todo = todoRepository.findByProject_IdAndDisplayId(project.getId(), displayId)
+                .filter(t -> displayId.equals(t.getDisplayId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Todo not found"));
+        return mapToDto(todo);
+    }
+
     @Autowired private TodoRepository todoRepository;
     @Autowired private ProjectRepository projectRepository;
     @Autowired private WorkspaceMemberRepository workspaceMemberRepository;
@@ -104,12 +124,21 @@ public class TodoServiceImpl implements TodoService {
         validateDateRange(request.getStartDateTime(), request.getEndDateTime());
         validateDescriptionConsistency(request.getDescriptionJson(), request.getDescriptionPlainText());
 
+        // Parent is chosen only at creation; the new Todo cannot already be an ancestor.
+        // Lock it against concurrent deletion until this child is committed.
+        Todo parent = request.getParentTodoId() == null ? null :
+                todoRepository.findForCommentWrite(request.getParentTodoId(), project.getId())
+                        .orElseThrow(() -> new BadRequestException("Parent Todo must belong to this project"));
+
         // Atomically increment displayIdSeq
         int seq = project.getDisplayIdSeq() + 1;
         project.setDisplayIdSeq(seq);
         projectRepository.save(project);
         String prefix = project.getPrefixCode() != null && !project.getPrefixCode().isEmpty()
-                ? project.getPrefixCode() : "TD";
+                ? project.getPrefixCode().toLowerCase(Locale.ROOT) : "td";
+        if (!prefix.matches("[a-z]+")) {
+            throw new BadRequestException("Project prefix must contain ASCII letters only");
+        }
         String displayId = prefix + "-" + seq;
 
         // Resolve Status
@@ -140,6 +169,7 @@ public class TodoServiceImpl implements TodoService {
 
         Todo todo = new Todo();
         todo.setProject(project);
+        todo.setParentTodo(parent);
         todo.setDisplayId(displayId);
         todo.setTitle(request.getTitle().trim());
         todo.setDescriptionJson(request.getDescriptionJson() != null && !request.getDescriptionJson().isNull()
@@ -257,8 +287,35 @@ public class TodoServiceImpl implements TodoService {
         Project project = getProjectAndValidateAccess(workspaceSlug, projectSlug, userId);
         Todo todo = todoRepository.findForCommentWrite(todoId, project.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Todo not found with id: " + todoId));
+        if (!todoRepository.findChildrenForDeletion(todoId, org.springframework.data.domain.PageRequest.of(0, 1)).isEmpty()) {
+            throw new ResourceConflictException("Todo has subtasks. Promote or delete them before deleting this Todo");
+        }
         commentRepository.detachParentsForTodo(todoId);
         todoRepository.delete(todo);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TodoDto> getSubtasks(String workspaceSlug, String projectSlug, UUID parentId, UUID userId) {
+        Project project = getProjectAndValidateAccess(workspaceSlug, projectSlug, userId);
+        todoRepository.findByIdAndProject_Id(parentId, project.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Parent Todo not found"));
+        return mapToDtoList(todoRepository.findByProject_IdAndParentTodo_IdOrderByCreatedDateAscIdAsc(project.getId(), parentId));
+    }
+
+    @Override
+    @Transactional
+    public TodoDto promoteSubtask(String workspaceSlug, String projectSlug, UUID todoId, UUID userId) {
+        Project project = getProjectAndValidateAccess(workspaceSlug, projectSlug, userId);
+        Todo todo = todoRepository.findForCommentWrite(todoId, project.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Todo not found"));
+        if (todo.getParentTodo() != null) {
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            todoRepository.promoteToRoot(todoId, project.getId(), now);
+            todo.setParentTodo(null);
+            todo.setModifiedDate(now);
+        }
+        return mapToDto(todo);
     }
 
     @Override

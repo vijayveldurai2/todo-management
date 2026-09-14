@@ -14,11 +14,13 @@ import java.util.Set;
 
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(onConstructor_ = @com.fasterxml.jackson.annotation.JsonCreator)
 @AllArgsConstructor
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({"parentTodoId"})
 public class TodoUpdateRequest {
 
     private String title;
+    @tools.jackson.databind.annotation.JsonDeserialize(using = TodoJsonBridge.Reader.class)
     private JsonNode descriptionJson;
     private String descriptionPlainText;
     private Priority priority;

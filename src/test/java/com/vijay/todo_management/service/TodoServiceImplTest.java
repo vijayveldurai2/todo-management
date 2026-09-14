@@ -146,6 +146,83 @@ class TodoServiceImplTest {
     }
 
     @Test
+    void createSubtaskUsesSameProjectParentAndIndependentDefaults() {
+        mockProjectAccess(userId);
+        Todo parent = new Todo(); parent.setId(UUID.randomUUID()); parent.setStatus(statusDone);
+        parent.setSprint(sprintBoard);
+        when(todoRepository.findForCommentWrite(parent.getId(),project.getId())).thenReturn(Optional.of(parent));
+        when(statusRepository.findByProject_IdOrderByPositionAsc(project.getId())).thenReturn(List.of(statusTodo));
+        when(todoRepository.save(any(Todo.class))).thenAnswer(i -> {
+            Todo child=i.getArgument(0); child.setId(UUID.randomUUID()); return child;
+        });
+        TodoCreateRequest request=new TodoCreateRequest(); request.setTitle("Child");
+        request.setParentTodoId(parent.getId());
+        TodoDto result=todoService.createTodo("test-ws","test-proj",request,userId);
+        assertEquals(parent.getId(),result.getParentTodoId());
+        assertEquals(statusTodo.getId(),result.getStatusId());
+        assertNull(result.getSprintId());
+        assertEquals("wr-6",result.getDisplayId());
+        assertEquals(statusDone,parent.getStatus());
+    }
+
+    @Test
+    void missingOrCrossProjectParentRejectedBeforeCreatingTodo() {
+        mockProjectAccess(userId);
+        TodoCreateRequest request=new TodoCreateRequest(); request.setTitle("Child"); request.setParentTodoId(UUID.randomUUID());
+        assertThrows(BadRequestException.class,()->todoService.createTodo("test-ws","test-proj",request,userId));
+        verify(todoRepository,never()).save(any()); verify(projectRepository,never()).save(any());
+    }
+
+    @Test
+    void parentWithEvenCompletedChildrenCannotBeDeleted() {
+        mockProjectAccess(userId);
+        Todo parent=new Todo(); parent.setId(UUID.randomUUID());
+        Todo child=new Todo(); child.setStatus(statusDone);
+        when(todoRepository.findForCommentWrite(parent.getId(),project.getId())).thenReturn(Optional.of(parent));
+        when(todoRepository.findChildrenForDeletion(eq(parent.getId()),any())).thenReturn(List.of(child));
+        assertThrows(com.vijay.todo_management.exception.ResourceConflictException.class,
+                ()->todoService.deleteTodo("test-ws","test-proj",parent.getId(),userId));
+        verifyNoInteractions(commentRepository); verify(todoRepository,never()).delete(any());
+    }
+
+    @Test
+    void promotionKeepsIdentityAndIndependentFieldsAndIsIdempotent() {
+        mockProjectAccess(userId);
+        Todo child=new Todo(); child.setId(UUID.randomUUID()); child.setParentTodo(new Todo());
+        child.setDisplayId("WR-50"); child.setStatus(statusInProgress); child.setSprint(sprintBoard);
+        when(todoRepository.findForCommentWrite(child.getId(),project.getId())).thenReturn(Optional.of(child));
+        TodoDto result=todoService.promoteSubtask("test-ws","test-proj",child.getId(),userId);
+        assertNull(result.getParentTodoId()); assertEquals("WR-50",result.getDisplayId());
+        assertEquals(statusInProgress.getId(),result.getStatusId()); assertEquals(sprintBoard.getId(),result.getSprintId());
+        todoService.promoteSubtask("test-ws","test-proj",child.getId(),userId);
+        verify(todoRepository,times(1)).promoteToRoot(eq(child.getId()),eq(project.getId()),any());
+    }
+
+    @Test
+    void listSubtasksValidatesParentAndUsesDirectChildQuery() {
+        mockProjectAccess(userId);
+        UUID id=UUID.randomUUID();
+        when(todoRepository.findByIdAndProject_Id(id,project.getId())).thenReturn(Optional.of(new Todo()));
+        assertTrue(todoService.getSubtasks("test-ws","test-proj",id,userId).isEmpty());
+        verify(todoRepository).findByProject_IdAndParentTodo_IdOrderByCreatedDateAscIdAsc(project.getId(),id);
+    }
+
+    @Test
+    void mismatchedParentAndPromotionTargetReturnNotFound() {
+        mockProjectAccess(userId); UUID id=UUID.randomUUID();
+        assertThrows(ResourceNotFoundException.class,()->todoService.getSubtasks("test-ws","test-proj",id,userId));
+        assertThrows(ResourceNotFoundException.class,()->todoService.promoteSubtask("test-ws","test-proj",id,userId));
+    }
+
+    @Test
+    void outsiderCannotListOrPromoteSubtasks() {
+        when(projectRepository.findByWorkspace_SlugAndSlug("test-ws","test-proj")).thenReturn(Optional.of(project));
+        assertThrows(ForbiddenException.class,()->todoService.getSubtasks("test-ws","test-proj",UUID.randomUUID(),nonMemberUserId));
+        assertThrows(ForbiddenException.class,()->todoService.promoteSubtask("test-ws","test-proj",UUID.randomUUID(),nonMemberUserId));
+        verifyNoInteractions(todoRepository);
+    }
+
+    @Test
     void deleteTodoLocksBeforeDetachingThreadAndDeleting() {
         mockProjectAccess(userId);
         Todo todo = new Todo();
@@ -184,7 +261,7 @@ class TodoServiceImplTest {
 
         assertNotNull(result);
         assertEquals("New Task", result.getTitle());
-        assertEquals("WR-6", result.getDisplayId());
+        assertEquals("wr-6", result.getDisplayId());
         assertEquals(statusTodo.getId(), result.getStatusId());
         assertEquals(false, result.getIsDone());
         assertEquals(6, project.getDisplayIdSeq());

@@ -43,6 +43,10 @@ public class Todo {
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_todo_id", updatable = false)
+    private Todo parentTodo;
+
     @Column(name = "display_id", nullable = false, length = 20, updatable = false)
     private String displayId; // e.g. "WR-546" — backend-generated, never reused
 

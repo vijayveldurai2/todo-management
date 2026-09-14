@@ -10,6 +10,22 @@ import java.util.UUID;
 
 @Repository
 public interface TodoRepository extends JpaRepository<Todo, UUID> {
+    Optional<Todo> findByProject_IdAndDisplayId(UUID projectId, String displayId);
+
+    List<Todo> findByProject_IdAndParentTodo_IdOrderByCreatedDateAscIdAsc(UUID projectId, UUID parentId);
+
+    // Parent is not writable by ordinary entity updates, including stale concurrent edits.
+    @org.springframework.data.jpa.repository.Modifying(flushAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("update Todo t set t.parentTodo = null, t.modifiedDate = :now where t.id = :id and t.project.id = :projectId")
+    int promoteToRoot(@org.springframework.data.repository.query.Param("id") UUID id,
+            @org.springframework.data.repository.query.Param("projectId") UUID projectId,
+            @org.springframework.data.repository.query.Param("now") java.time.LocalDateTime now);
+
+    // Locking read observes current children even under MySQL REPEATABLE_READ.
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select t from Todo t where t.parentTodo.id = :parentId")
+    List<Todo> findChildrenForDeletion(@org.springframework.data.repository.query.Param("parentId") UUID parentId,
+            org.springframework.data.domain.Pageable page);
 
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @org.springframework.data.jpa.repository.Query("select t from Todo t where t.id = :id and t.project.id = :projectId")
