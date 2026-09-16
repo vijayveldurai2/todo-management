@@ -6,6 +6,9 @@ import com.vijay.todo_management.dto.SignupRequest;
 import com.vijay.todo_management.dto.SignupResponse;
 import com.vijay.todo_management.dto.UserDto;
 import com.vijay.todo_management.dto.VerifyResponse;
+import com.vijay.todo_management.dto.AuthSession;
+import com.vijay.todo_management.dto.RefreshSession;
+import com.vijay.todo_management.dto.TokenRefreshResponse;
 import com.vijay.todo_management.entity.PendingSignup;
 import com.vijay.todo_management.entity.User;
 import com.vijay.todo_management.entity.UserIdentity;
@@ -19,10 +22,12 @@ import com.vijay.todo_management.repository.PendingSignupRepository;
 import com.vijay.todo_management.repository.UserIdentityRepository;
 import com.vijay.todo_management.repository.UserRepository;
 import com.vijay.todo_management.repository.VerificationTokenRepository;
+import com.vijay.todo_management.security.RedisSessionService;
 import com.vijay.todo_management.service.AuthService;
 import com.vijay.todo_management.service.EmailService;
 import com.vijay.todo_management.service.JwtService;
 import com.vijay.todo_management.util.TokenHasher;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +40,9 @@ public class AuthServiceImpl implements AuthService {
 
     private static final int PENDING_SIGNUP_TTL_HOURS = 24;
     private static final int VERIFICATION_TOKEN_TTL_HOURS = 24;
+
+    @Value("${app.jwt.refresh-expiration-sec:604800}")
+    private long refreshExpirationSec = 604800;
 
     private final PendingSignupRepository pendingSignupRepository;
     private final VerificationTokenRepository verificationTokenRepository;
@@ -193,12 +201,18 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginResponse login(LoginRequest request) {
-        return login(request, "unknown", "unknown");
+        return loginSession(request, "unknown", "unknown").loginResponse();
     }
 
     @Override
     @Transactional
     public LoginResponse login(LoginRequest request, String ip, String device) {
+        return loginSession(request, ip, device).loginResponse();
+    }
+
+    @Override
+    @Transactional
+    public AuthSession loginSession(LoginRequest request, String ip, String device) {
         requireText(request.getLogin(), "login");
         requireText(request.getPassword(), "password");
 
@@ -223,10 +237,14 @@ public class AuthServiceImpl implements AuthService {
         String jti = UUID.randomUUID().toString();
         String accessToken = jwtService.generateToken(user, jti);
 
-        // Register active session in Redis allowlist
+        // Register active access token session in Redis allowlist
         redisSessionService.createSession(user.getId(), jti, jwtService.getExpirationSeconds(), device, ip);
 
-        return new LoginResponse(
+        // Generate and register refresh token in Redis
+        String rawRefreshToken = UUID.randomUUID().toString() + "-" + UUID.randomUUID().toString();
+        redisSessionService.createRefreshToken(user.getId(), rawRefreshToken, refreshExpirationSec, device, ip);
+
+        LoginResponse loginResponse = new LoginResponse(
                 accessToken,
                 "Bearer",
                 user.getId(),
@@ -234,19 +252,70 @@ public class AuthServiceImpl implements AuthService {
                 user.getUsername(),
                 user.getRole().name()
         );
+
+        return new AuthSession(loginResponse, rawRefreshToken);
+    }
+
+    @Override
+    @Transactional
+    public RefreshSession refresh(String rawRefreshToken, String ip, String device) {
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+            throw new RuntimeException("Missing refresh token");
+        }
+
+        RedisSessionService.RefreshTokenData data = redisSessionService.validateAndConsumeRefreshToken(rawRefreshToken);
+        if (data == null || data.userId() == null) {
+            throw new RuntimeException("Invalid or expired refresh token");
+        }
+
+        User user = userRepository.findById(data.userId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!Boolean.TRUE.equals(user.getIsActive())) {
+            throw new RuntimeException("Account is disabled");
+        }
+
+        String jti = UUID.randomUUID().toString();
+        String newAccessToken = jwtService.generateToken(user, jti);
+
+        // Register active access token session in Redis allowlist
+        redisSessionService.createSession(user.getId(), jti, jwtService.getExpirationSeconds(), device, ip);
+
+        // Rotate refresh token (issue new refresh token)
+        String newRawRefreshToken = UUID.randomUUID().toString() + "-" + UUID.randomUUID().toString();
+        redisSessionService.createRefreshToken(user.getId(), newRawRefreshToken, refreshExpirationSec, device, ip);
+
+        TokenRefreshResponse response = new TokenRefreshResponse(newAccessToken, "Bearer");
+        return new RefreshSession(response, newRawRefreshToken);
     }
 
     @Override
     public void logout(UUID userId, String jti) {
+        logout(userId, jti, null);
+    }
+
+    @Override
+    public void logout(UUID userId, String jti, String rawRefreshToken) {
         if (userId != null && jti != null) {
             redisSessionService.deleteSession(userId, jti);
+        }
+        if (rawRefreshToken != null && !rawRefreshToken.isBlank()) {
+            redisSessionService.deleteRefreshToken(rawRefreshToken);
         }
     }
 
     @Override
     public void logoutAll(UUID userId) {
+        logoutAll(userId, null);
+    }
+
+    @Override
+    public void logoutAll(UUID userId, String rawRefreshToken) {
         if (userId != null) {
             redisSessionService.deleteAllSessions(userId);
+        }
+        if (rawRefreshToken != null && !rawRefreshToken.isBlank()) {
+            redisSessionService.deleteRefreshToken(rawRefreshToken);
         }
     }
 

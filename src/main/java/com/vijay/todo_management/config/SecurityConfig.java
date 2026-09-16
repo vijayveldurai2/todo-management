@@ -59,10 +59,10 @@ public class SecurityConfig {
                         // Pre-flight requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Public auth endpoints (no token required)
-                        .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.GET,  "/api/auth/verify").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/verify").permitAll()
-                        // /api/auth/me, /logout, /logout-all require a valid token — fall through to authenticated()
+                        // /api/auth/me, /logout-all require a valid token — fall through to authenticated()
                         .requestMatchers("/api/_internal/**").permitAll()
                         // Swagger & OpenAPI endpoints
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
