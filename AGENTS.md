@@ -51,3 +51,9 @@ Whenever designing, implementing, updating, or debugging backend endpoints, DTOs
 
 5. **Multi-Root IDE Workspace**:
    - To view and edit both repositories side-by-side in Antigravity IDE without merging git branches or repositories, open [`todo-management.code-workspace`](file:///c:/Projects/Vijay/random/todo-management.code-workspace).
+
+6. **Git Branching & Protected Branches Policy**:
+   - **NEVER merge branches into `dev`, `stage`, `staging`, `main`, or `master`**.
+   - Merges into base branches must strictly happen via Pull Requests (PRs) created by the user with descriptions.
+   - All agent work must be committed and kept on dedicated feature branches (e.g., `feat/...`, `fix/...`).
+
