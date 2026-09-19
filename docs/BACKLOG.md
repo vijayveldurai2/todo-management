@@ -19,6 +19,7 @@ at a time: agree on behavior, explain the design, implement, and verify.
 - Sprint completion: decide rollover versus manual triage.
 - Activity/audit logging.
 - Display-ID regex routing guard.
+- Change password functionality (tracked in todo.md).
 
 ## Agreed product direction
 - Workspace settings provide defaults; individual projects can use different workflows.
