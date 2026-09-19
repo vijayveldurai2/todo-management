@@ -57,3 +57,6 @@ Whenever designing, implementing, updating, or debugging backend endpoints, DTOs
    - Merges into base branches must strictly happen via Pull Requests (PRs) created by the user with descriptions.
    - All agent work must be committed and kept on dedicated feature branches (e.g., `feat/...`, `fix/...`).
 
+7. **Application Execution Policy**:
+   - **DO NOT keep dev servers or applications running in the background**.
+   - You may compile, build, lint, and run automated tests, but do NOT launch or leave running applications/servers. The user runs and monitors the applications themselves.
