@@ -59,10 +59,10 @@ public class SecurityConfig {
                         // Pre-flight requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Public auth endpoints (no token required)
-                        .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/signup", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.GET,  "/api/auth/verify").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/verify").permitAll()
-                        // /api/auth/me, /logout, /logout-all require a valid token — fall through to authenticated()
+                        // /api/auth/me, /logout-all require a valid token — fall through to authenticated()
                         .requestMatchers("/api/_internal/**").permitAll()
                         // Swagger & OpenAPI endpoints
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
@@ -78,7 +78,18 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
+        configuration.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "http://localhost:[*]",
+                "http://127.0.0.1:[*]"
+        ));
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:3000"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "X-XSRF-TOKEN", "X-CSRF-TOKEN"));
         configuration.setExposedHeaders(List.of("Set-Cookie"));

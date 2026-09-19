@@ -1,5 +1,7 @@
 package com.vijay.todo_management.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vijay.todo_management.dto.*;
 import com.vijay.todo_management.entity.*;
 import com.vijay.todo_management.enums.Priority;
@@ -7,6 +9,7 @@ import com.vijay.todo_management.enums.StatusCategory;
 import com.vijay.todo_management.exception.BadRequestException;
 import com.vijay.todo_management.exception.ForbiddenException;
 import com.vijay.todo_management.exception.ResourceNotFoundException;
+import com.vijay.todo_management.mapper.TodoMapper;
 import com.vijay.todo_management.repository.*;
 import com.vijay.todo_management.service.impl.TodoServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.*;
@@ -46,6 +50,15 @@ class TodoServiceImplTest {
 
     @Mock
     private TagsRepository tagsRepository;
+
+    @Spy
+    private TodoMapper todoMapper = new TodoMapper();
+
+    @Mock
+    private ChecklistItemRepository checklistItemRepository;
+
+    @Mock
+    private CommentRepository commentRepository;
 
     @InjectMocks
     private TodoServiceImpl todoService;
@@ -132,6 +145,96 @@ class TodoServiceImplTest {
         when(projectMemberRepository.existsByProject_IdAndUser_Id(project.getId(), callerId)).thenReturn(true);
     }
 
+    @Test
+    void createSubtaskUsesSameProjectParentAndIndependentDefaults() {
+        mockProjectAccess(userId);
+        Todo parent = new Todo(); parent.setId(UUID.randomUUID()); parent.setStatus(statusDone);
+        parent.setSprint(sprintBoard);
+        when(todoRepository.findForCommentWrite(parent.getId(),project.getId())).thenReturn(Optional.of(parent));
+        when(statusRepository.findByProject_IdOrderByPositionAsc(project.getId())).thenReturn(List.of(statusTodo));
+        when(todoRepository.save(any(Todo.class))).thenAnswer(i -> {
+            Todo child=i.getArgument(0); child.setId(UUID.randomUUID()); return child;
+        });
+        TodoCreateRequest request=new TodoCreateRequest(); request.setTitle("Child");
+        request.setParentTodoId(parent.getId());
+        TodoDto result=todoService.createTodo("test-ws","test-proj",request,userId);
+        assertEquals(parent.getId(),result.getParentTodoId());
+        assertEquals(statusTodo.getId(),result.getStatusId());
+        assertNull(result.getSprintId());
+        assertEquals("wr-6",result.getDisplayId());
+        assertEquals(statusDone,parent.getStatus());
+    }
+
+    @Test
+    void missingOrCrossProjectParentRejectedBeforeCreatingTodo() {
+        mockProjectAccess(userId);
+        TodoCreateRequest request=new TodoCreateRequest(); request.setTitle("Child"); request.setParentTodoId(UUID.randomUUID());
+        assertThrows(BadRequestException.class,()->todoService.createTodo("test-ws","test-proj",request,userId));
+        verify(todoRepository,never()).save(any()); verify(projectRepository,never()).save(any());
+    }
+
+    @Test
+    void parentWithEvenCompletedChildrenCannotBeDeleted() {
+        mockProjectAccess(userId);
+        Todo parent=new Todo(); parent.setId(UUID.randomUUID());
+        Todo child=new Todo(); child.setStatus(statusDone);
+        when(todoRepository.findForCommentWrite(parent.getId(),project.getId())).thenReturn(Optional.of(parent));
+        when(todoRepository.findChildrenForDeletion(eq(parent.getId()),any())).thenReturn(List.of(child));
+        assertThrows(com.vijay.todo_management.exception.ResourceConflictException.class,
+                ()->todoService.deleteTodo("test-ws","test-proj",parent.getId(),userId));
+        verifyNoInteractions(commentRepository); verify(todoRepository,never()).delete(any());
+    }
+
+    @Test
+    void promotionKeepsIdentityAndIndependentFieldsAndIsIdempotent() {
+        mockProjectAccess(userId);
+        Todo child=new Todo(); child.setId(UUID.randomUUID()); child.setParentTodo(new Todo());
+        child.setDisplayId("WR-50"); child.setStatus(statusInProgress); child.setSprint(sprintBoard);
+        when(todoRepository.findForCommentWrite(child.getId(),project.getId())).thenReturn(Optional.of(child));
+        TodoDto result=todoService.promoteSubtask("test-ws","test-proj",child.getId(),userId);
+        assertNull(result.getParentTodoId()); assertEquals("WR-50",result.getDisplayId());
+        assertEquals(statusInProgress.getId(),result.getStatusId()); assertEquals(sprintBoard.getId(),result.getSprintId());
+        todoService.promoteSubtask("test-ws","test-proj",child.getId(),userId);
+        verify(todoRepository,times(1)).promoteToRoot(eq(child.getId()),eq(project.getId()),any());
+    }
+
+    @Test
+    void listSubtasksValidatesParentAndUsesDirectChildQuery() {
+        mockProjectAccess(userId);
+        UUID id=UUID.randomUUID();
+        when(todoRepository.findByIdAndProject_Id(id,project.getId())).thenReturn(Optional.of(new Todo()));
+        assertTrue(todoService.getSubtasks("test-ws","test-proj",id,userId).isEmpty());
+        verify(todoRepository).findByProject_IdAndParentTodo_IdOrderByCreatedDateAscIdAsc(project.getId(),id);
+    }
+
+    @Test
+    void mismatchedParentAndPromotionTargetReturnNotFound() {
+        mockProjectAccess(userId); UUID id=UUID.randomUUID();
+        assertThrows(ResourceNotFoundException.class,()->todoService.getSubtasks("test-ws","test-proj",id,userId));
+        assertThrows(ResourceNotFoundException.class,()->todoService.promoteSubtask("test-ws","test-proj",id,userId));
+    }
+
+    @Test
+    void outsiderCannotListOrPromoteSubtasks() {
+        when(projectRepository.findByWorkspace_SlugAndSlug("test-ws","test-proj")).thenReturn(Optional.of(project));
+        assertThrows(ForbiddenException.class,()->todoService.getSubtasks("test-ws","test-proj",UUID.randomUUID(),nonMemberUserId));
+        assertThrows(ForbiddenException.class,()->todoService.promoteSubtask("test-ws","test-proj",UUID.randomUUID(),nonMemberUserId));
+        verifyNoInteractions(todoRepository);
+    }
+
+    @Test
+    void deleteTodoLocksBeforeDetachingThreadAndDeleting() {
+        mockProjectAccess(userId);
+        Todo todo = new Todo();
+        todo.setId(UUID.randomUUID());
+        when(todoRepository.findForCommentWrite(todo.getId(), project.getId())).thenReturn(Optional.of(todo));
+        todoService.deleteTodo("test-ws", "test-proj", todo.getId(), userId);
+        var order = inOrder(todoRepository, commentRepository);
+        order.verify(todoRepository).findForCommentWrite(todo.getId(), project.getId());
+        order.verify(commentRepository).detachParentsForTodo(todo.getId());
+        order.verify(todoRepository).delete(todo);
+    }
+
     private void mockSuperAdminAccess(UUID callerId) {
         when(projectRepository.findByWorkspace_SlugAndSlug("test-ws", "test-proj")).thenReturn(Optional.of(project));
         WorkspaceMember sa = new WorkspaceMember();
@@ -152,14 +255,13 @@ class TodoServiceImplTest {
 
         TodoCreateRequest req = new TodoCreateRequest();
         req.setTitle("New Task");
-        req.setDescription("Task Description");
         req.setPriority(Priority.HIGH);
 
         TodoDto result = todoService.createTodo("test-ws", "test-proj", req, userId);
 
         assertNotNull(result);
         assertEquals("New Task", result.getTitle());
-        assertEquals("WR-6", result.getDisplayId());
+        assertEquals("wr-6", result.getDisplayId());
         assertEquals(statusTodo.getId(), result.getStatusId());
         assertEquals(false, result.getIsDone());
         assertEquals(6, project.getDisplayIdSeq());
@@ -437,5 +539,151 @@ class TodoServiceImplTest {
 
         assertNotNull(result);
         assertEquals(statusDone.getId(), result.getStatusId());
+    }
+
+    @Test
+    void testCreateTodo_BothDescriptionNull_Succeeds() {
+        mockProjectAccess(userId);
+        when(statusRepository.findByProject_IdOrderByPositionAsc(project.getId()))
+                .thenReturn(List.of(statusTodo));
+        when(todoRepository.save(any(Todo.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        TodoCreateRequest req = new TodoCreateRequest();
+        req.setTitle("Task Null Description");
+        req.setDescriptionJson(null);
+        req.setDescriptionPlainText(null);
+
+        TodoDto result = todoService.createTodo("test-ws", "test-proj", req, userId);
+        assertNotNull(result);
+        assertNull(result.getDescriptionJson());
+        assertNull(result.getDescriptionPlainText());
+    }
+
+    @Test
+    void testCreateTodo_OnlyJsonProvided_ThrowsBadRequest() throws Exception {
+        mockProjectAccess(userId);
+        JsonNode jsonNode = new ObjectMapper().readTree("{\"type\":\"doc\"}");
+
+        TodoCreateRequest req = new TodoCreateRequest();
+        req.setTitle("Task Inconsistent");
+        req.setDescriptionJson(jsonNode);
+        req.setDescriptionPlainText(null);
+
+        BadRequestException ex = assertThrows(BadRequestException.class, () ->
+                todoService.createTodo("test-ws", "test-proj", req, userId));
+        assertEquals("descriptionJson and descriptionPlainText must either both be provided or both be null", ex.getMessage());
+    }
+
+    @Test
+    void testCreateTodo_OnlyPlainTextProvided_ThrowsBadRequest() {
+        mockProjectAccess(userId);
+
+        TodoCreateRequest req = new TodoCreateRequest();
+        req.setTitle("Task Inconsistent");
+        req.setDescriptionJson(null);
+        req.setDescriptionPlainText("Some text");
+
+        BadRequestException ex = assertThrows(BadRequestException.class, () ->
+                todoService.createTodo("test-ws", "test-proj", req, userId));
+        assertEquals("descriptionJson and descriptionPlainText must either both be provided or both be null", ex.getMessage());
+    }
+
+    @Test
+    void testCreateTodo_BothProvided_Succeeds() throws Exception {
+        mockProjectAccess(userId);
+        when(statusRepository.findByProject_IdOrderByPositionAsc(project.getId()))
+                .thenReturn(List.of(statusTodo));
+        when(todoRepository.save(any(Todo.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        JsonNode jsonNode = new ObjectMapper().readTree("{\"type\":\"doc\",\"content\":[]}");
+
+        TodoCreateRequest req = new TodoCreateRequest();
+        req.setTitle("Rich Task");
+        req.setDescriptionJson(jsonNode);
+        req.setDescriptionPlainText("Plain text extract");
+
+        TodoDto result = todoService.createTodo("test-ws", "test-proj", req, userId);
+        assertNotNull(result);
+        assertEquals(jsonNode, result.getDescriptionJson());
+        assertEquals("Plain text extract", result.getDescriptionPlainText());
+    }
+
+    @Test
+    void testUpdateTodo_OnlyTitleChanged_PreservesExistingDescription() throws Exception {
+        mockProjectAccess(userId);
+        UUID todoId = UUID.randomUUID();
+        JsonNode existingJson = new ObjectMapper().readTree("{\"type\":\"doc\",\"text\":\"original\"}");
+
+        Todo existingTodo = new Todo();
+        existingTodo.setId(todoId);
+        existingTodo.setProject(project);
+        existingTodo.setTitle("Original Title");
+        existingTodo.setDescriptionJson(existingJson);
+        existingTodo.setDescriptionPlainText("original text");
+
+        when(todoRepository.findByIdAndProject_Id(todoId, project.getId())).thenReturn(Optional.of(existingTodo));
+        when(todoRepository.save(any(Todo.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // PATCH request omitting description fields entirely (presence flags remain false)
+        TodoUpdateRequest req = new TodoUpdateRequest();
+        req.setTitle("Updated Title Only");
+        assertFalse(req.isDescriptionUpdateRequested());
+
+        TodoDto result = todoService.updateTodo("test-ws", "test-proj", todoId, req, userId);
+
+        assertNotNull(result);
+        assertEquals("Updated Title Only", result.getTitle());
+        // Verify existing description is completely preserved and untouched
+        assertEquals(existingJson, result.getDescriptionJson());
+        assertEquals("original text", result.getDescriptionPlainText());
+    }
+
+    @Test
+    void testUpdateTodo_ExplicitClear_SetsDescriptionToNull() throws Exception {
+        mockProjectAccess(userId);
+        UUID todoId = UUID.randomUUID();
+        JsonNode existingJson = new ObjectMapper().readTree("{\"type\":\"doc\"}");
+
+        Todo existingTodo = new Todo();
+        existingTodo.setId(todoId);
+        existingTodo.setProject(project);
+        existingTodo.setTitle("Title");
+        existingTodo.setDescriptionJson(existingJson);
+        existingTodo.setDescriptionPlainText("text");
+
+        when(todoRepository.findByIdAndProject_Id(todoId, project.getId())).thenReturn(Optional.of(existingTodo));
+        when(todoRepository.save(any(Todo.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // PATCH request explicitly clearing description
+        TodoUpdateRequest req = new TodoUpdateRequest();
+        req.setDescriptionJson(null);
+        req.setDescriptionPlainText(null);
+
+        assertTrue(req.isDescriptionUpdateRequested());
+
+        TodoDto result = todoService.updateTodo("test-ws", "test-proj", todoId, req, userId);
+
+        assertNotNull(result);
+        assertNull(result.getDescriptionJson());
+        assertNull(result.getDescriptionPlainText());
+    }
+
+    @Test
+    void testUpdateTodo_InconsistentUpdate_ThrowsBadRequest() throws Exception {
+        mockProjectAccess(userId);
+        UUID todoId = UUID.randomUUID();
+        Todo existingTodo = new Todo();
+        existingTodo.setId(todoId);
+        existingTodo.setProject(project);
+
+        when(todoRepository.findByIdAndProject_Id(todoId, project.getId())).thenReturn(Optional.of(existingTodo));
+
+        TodoUpdateRequest req = new TodoUpdateRequest();
+        req.setDescriptionJson(new ObjectMapper().readTree("{\"type\":\"doc\"}"));
+        // plain text omitted
+
+        BadRequestException ex = assertThrows(BadRequestException.class, () ->
+                todoService.updateTodo("test-ws", "test-proj", todoId, req, userId));
+        assertEquals("descriptionJson and descriptionPlainText must either both be provided or both be null", ex.getMessage());
     }
 }

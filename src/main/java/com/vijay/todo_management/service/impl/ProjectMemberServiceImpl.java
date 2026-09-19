@@ -2,6 +2,10 @@ package com.vijay.todo_management.service.impl;
 
 import com.vijay.todo_management.dto.ProjectMemberDto;
 import com.vijay.todo_management.entity.*;
+import com.vijay.todo_management.exception.BadRequestException;
+import com.vijay.todo_management.exception.ForbiddenException;
+import com.vijay.todo_management.exception.ResourceConflictException;
+import com.vijay.todo_management.exception.ResourceNotFoundException;
 import com.vijay.todo_management.repository.*;
 import com.vijay.todo_management.service.ProjectMemberService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +30,7 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
 
     @Autowired
     private WorkspaceMemberRepository workspaceMemberRepository;
-    
+
     @Autowired
     private UserRepository userRepository;
 
@@ -47,39 +51,39 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
 
     private Project getProjectBySlug(String slug) {
         return projectRepository.findFirstBySlug(slug)
-                .orElseThrow(() -> new RuntimeException("Project not found: " + slug));
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + slug));
     }
 
     private void validateProjectAdmin(Project project, UUID userId) {
         boolean isSuperAdmin = workspaceMemberRepository.findByWorkspace_IdAndUser_Id(project.getWorkspace().getId(), userId)
                 .map(wm -> wm.getRole() == WorkspaceMember.Role.SUPER_ADMIN)
                 .orElse(false);
-                
+
         if (isSuperAdmin) return;
-        
+
         boolean isProjectAdmin = projectMemberRepository.findByProject_IdAndUser_Id(project.getId(), userId)
                 .map(pm -> pm.getProjectRole().isAdmin())
                 .orElse(false);
-                
+
         if (!isProjectAdmin) {
-            throw new RuntimeException("Caller must be a project Admin or workspace SUPER_ADMIN");
+            throw new ForbiddenException("Caller must be a project Admin or workspace SUPER_ADMIN");
         }
     }
 
     @Override
     public List<ProjectMemberDto> getMembers(String projectSlug, UUID currentUserId) {
         Project project = getProjectBySlug(projectSlug);
-        
+
         boolean isSuperAdmin = workspaceMemberRepository.findByWorkspace_IdAndUser_Id(project.getWorkspace().getId(), currentUserId)
                 .map(wm -> wm.getRole() == WorkspaceMember.Role.SUPER_ADMIN)
                 .orElse(false);
-                
+
         boolean isProjectMember = projectMemberRepository.existsByProject_IdAndUser_Id(project.getId(), currentUserId);
-        
+
         if (!isSuperAdmin && !isProjectMember) {
-            throw new RuntimeException("Access denied: You must be a project member to view the member list.");
+            throw new ForbiddenException("Access denied: You must be a project member to view the member list.");
         }
-        
+
         return projectMemberRepository.findByProject_Slug(projectSlug).stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
@@ -94,36 +98,36 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         // Validate target is a workspace member
         boolean isWorkspaceMember = workspaceMemberRepository.existsByWorkspace_IdAndUser_Id(project.getWorkspace().getId(), userId);
         if (!isWorkspaceMember) {
-            throw new RuntimeException("User must be a member of the workspace before being added to a project");
+            throw new BadRequestException("User must be a member of the workspace before being added to a project");
         }
-        
+
         if (projectMemberRepository.existsByProject_IdAndUser_Id(project.getId(), userId)) {
-            throw new RuntimeException("User is already a member of this project");
+            throw new ResourceConflictException("User is already a member of this project");
         }
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
 
         ProjectRole role;
         if (roleId != null) {
             role = projectRoleRepository.findById(roleId)
-                    .orElseThrow(() -> new RuntimeException("Role not found: " + roleId));
+                    .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + roleId));
             if (!role.getProject().getId().equals(project.getId())) {
-                throw new RuntimeException("Role does not belong to this project");
+                throw new BadRequestException("Role does not belong to this project");
             }
         } else {
             // Default to Member role
             role = projectRoleRepository.findByProject_Slug(projectSlug).stream()
                     .filter(r -> !r.isAdmin() && "Member".equalsIgnoreCase(r.getName()))
                     .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Default Member role not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Default Member role not found"));
         }
 
         ProjectMember member = new ProjectMember();
         member.setProject(project);
         member.setUser(user);
         member.setProjectRole(role);
-        
+
         return mapToDto(projectMemberRepository.save(member));
     }
 
@@ -134,13 +138,13 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         validateProjectAdmin(project, currentUserId);
 
         ProjectMember member = projectMemberRepository.findByProject_IdAndUser_Id(project.getId(), userId)
-                .orElseThrow(() -> new RuntimeException("Project membership not found for user: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("Project membership not found for user: " + userId));
 
         ProjectRole newRole = projectRoleRepository.findById(roleId)
-                .orElseThrow(() -> new RuntimeException("Role not found: " + roleId));
-                
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + roleId));
+
         if (!newRole.getProject().getId().equals(project.getId())) {
-            throw new RuntimeException("Role does not belong to this project");
+            throw new BadRequestException("Role does not belong to this project");
         }
 
         member.setProjectRole(newRole);
@@ -154,7 +158,7 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
         validateProjectAdmin(project, currentUserId);
 
         ProjectMember member = projectMemberRepository.findByProject_IdAndUser_Id(project.getId(), userId)
-                .orElseThrow(() -> new RuntimeException("Project membership not found for user: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("Project membership not found for user: " + userId));
 
         projectMemberRepository.delete(member);
     }
